@@ -1,7 +1,7 @@
 import * as types from './types';
 
 const baseUrl
-  = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '') + '/';
+  = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '');
 
 const buildUrl = (path: string): string => baseUrl + '/' + path;
 
