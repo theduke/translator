@@ -9,6 +9,7 @@ interface Props {
   translation?: Translation | null;
 
   onTranslationAdded: (translation: Translation) => void;
+  onTranslationUpdated: (translation: Translation) => void;
 }
 
 interface State {
@@ -33,7 +34,13 @@ class Item extends React.Component<Props, State> {
     const {lang, translation} = this.props;
     const {value, saving} = this.state;
 
-    const showSaveButton = !!value &&  (!translation || value != translation.value);
+    let showSaveButton = false;
+    if (value && !translation) {
+      showSaveButton = true;
+    } else if (translation && translation.value != value) {
+      showSaveButton = true;
+    }
+
     const saveBtnDisabled = showSaveButton && saving;
     const saveBtnIconCls = saveBtnDisabled ? 'fa fa-spin' : 'fa fa-floppy-o';
 
@@ -87,10 +94,12 @@ class Item extends React.Component<Props, State> {
   onSave() {
     this.setState({saving: true});
 
+    const value = this.state.value;
+
     const data = {
       key: this.props.keyName,
       lang: this.props.lang,
-      value: this.state.value,
+      value,
     };
 
     let cmd: Command;
@@ -105,6 +114,7 @@ class Item extends React.Component<Props, State> {
         data,
       };
     }
+    const isNew = cmd.cmd === 'CreateTranslation';
 
     command(cmd)
       .then(() => {
@@ -112,15 +122,20 @@ class Item extends React.Component<Props, State> {
           saving: false,
         });
 
-        this.props.onTranslationAdded({
-          ...data,
-          language: this.props.lang,
-          created_at: 0,
-          created_by: '',
-          updated_at: 0,
-        });
+        if (isNew) {
+          this.props.onTranslationAdded({
+            ...data,
+            language: this.props.lang,
+            created_at: 0,
+            created_by: '',
+            updated_at: 0,
+          });
+        } else {
+          this.props.onTranslationUpdated({...this.props.translation, value});
+        }
 
       }).catch(e => {
+        console.log('Could not save translation', e);
         let err;
         if (e && e.error && e.error.code) {
           err = e.error.code;

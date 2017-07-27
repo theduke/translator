@@ -97,8 +97,11 @@ const config = {
 
   devServer: {
     contentBase: path.join(__dirname, 'dist'),
+    publicPath: '/assets',
     port: 9000,
-    historyApiFallback: true,
+    historyApiFallback: {
+      index: '/assets/index.html',
+    },
     hot: true,
   },
 

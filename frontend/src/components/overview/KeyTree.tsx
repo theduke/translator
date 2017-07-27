@@ -39,13 +39,12 @@ const KeyTree = (props: KeyTreeProps) => {
       _ + 1;
       return (
         <div key={name} className="mb-2">
-          <div>
+          <button className='btn btn-sm btn-secondary mb-1' onClick={() => show(nestedPath)}>
             <span className='mr-2'>
               {name}
             </span>
-            <i className='fa fa-folder-open'></i>
-          </div>
-          <div className='w-100'></div>
+            <i className='fa fa-folder-open' />
+          </button>
 
           <div>
             <KeyTree

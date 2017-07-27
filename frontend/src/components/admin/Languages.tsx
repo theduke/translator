@@ -15,6 +15,7 @@ interface Props {
 interface State {
   loading: boolean;
   error: string | null;
+  confirmDeleteLanguage: string | null;
 }
 
 class Languages extends React.Component<Props, State> {
@@ -22,11 +23,13 @@ class Languages extends React.Component<Props, State> {
   public state = {
     loading: false,
     error: null,
+    confirmDeleteLanguage: null,
   };
+
 
   public render() {
     const {languages, languageAdded} = this.props;
-    const {loading, error} = this.state;
+    const {loading, error, confirmDeleteLanguage} = this.state;
 
     return (
       <div>
@@ -34,6 +37,31 @@ class Languages extends React.Component<Props, State> {
 
         {
           error && <div className="alert alert-danger">{error}</div>
+        }
+
+        {
+          confirmDeleteLanguage ? (
+            <div className="alert alert-danger">
+              <p>
+                Deleting a language will delete <b>ALL TRANSLATIONS</b> that have
+                been created for it.
+              </p>
+
+              <p>It will also delete all <b>child languages</b>.</p>
+
+              <p>
+                <b>Are you sure you want to delete {confirmDeleteLanguage}?</b>
+              </p>
+
+              <button
+                className="btn btn-lg btn-danger"
+                onClick={() => this.deleteLanguage(confirmDeleteLanguage as any)}
+              >
+                Yes, delete {confirmDeleteLanguage}
+              </button>
+            </div>
+
+          ) : null
         }
 
         <ul className = 'list-group'>
@@ -48,9 +76,15 @@ class Languages extends React.Component<Props, State> {
 
   @bind
   private deleteLanguage(id: string) {
+    if (this.state.confirmDeleteLanguage === null) {
+      this.setState({confirmDeleteLanguage: id});
+      return;
+    }
+
     this.setState({
       error: null,
       loading: true,
+      confirmDeleteLanguage: null,
     });
 
     command({

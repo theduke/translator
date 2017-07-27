@@ -25,6 +25,21 @@ class KeySearch extends React.Component<Props, State> {
 
     const showResults = !!term;
 
+    const items = results.length > 0 ? (
+      results.map((k: Key) => {
+        return (
+          <NavLink className='btn btn-primary btn-md ml-2 mr-2'
+                   to={`/translate/${k.key}`}
+          >
+            <i key='icon' className='fa fa-dot-circle-o pr-2' />
+            {k.key}
+          </NavLink>
+        );
+      })
+    ) : (
+      <p>No matching keys found.</p>
+    );
+
     return (
       <div className="mb-3">
         <h3>Search</h3>
@@ -40,18 +55,7 @@ class KeySearch extends React.Component<Props, State> {
         { showResults && (
           <ul className='list-group'>
             <li className='list-group-item'>
-            {
-              results.map((k: Key) => {
-                return (
-                    <NavLink className='btn btn-primary btn-md ml-2 mr-2'
-                      to={`/translate/${k.key}`}
-                    >
-                      <i className='fa fa-dot-circle-o pr-2' />
-                      {k.key}
-                    </NavLink>
-                );
-              })
-            }
+              {items}
             </li>
           </ul>
         )

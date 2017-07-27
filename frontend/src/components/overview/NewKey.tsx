@@ -5,8 +5,10 @@ import {bind} from 'decko';
 import {Key} from 'translator/types';
 import {command} from 'translator/api';
 
+import {KeyTree} from './Overview';
+
 interface Props {
-  keys: Key[];
+  keyTree: KeyTree;
   onAdded: (key: Key) => void;
 }
 
@@ -116,17 +118,29 @@ class NewKey extends React.Component<RoutedProps, State> {
         }
       }
 
-      // Check key uniqueness.
-      for (const item of this.props.keys) {
-        if (item.key === key) {
-          error = 'Key already exists!';
-          break;
-        } else if (item.key.startsWith(key)) {
-          error = `Invalid key: nested child key : ${item.key} already exists`;
-          break;
-        } else if (key.startsWith(item.key)) {
-          // error = `Invalid key: parent key : ${item.key} already exists`;
-          break;
+      if (!error) {
+        let parts = key.split('.');
+        let subTree: any = this.props.keyTree;
+
+        while (parts.length > 0) {
+          const part = parts.shift() as string;
+          if (part in subTree) {
+            subTree = subTree[part];
+
+            if (parts.length > 0 && subTree._item) {
+              error = `Invalid nested key: can't create a key nested under the existing key ${subTree.key}`;
+            }
+          } else {
+            subTree = null;
+            break;
+          }
+        }
+        if (error === null && subTree !== null) {
+          if (subTree._item) {
+            error = `Duplicate key: ${key} already exists.`;
+          } else {
+            error = `Invalid nested key: ${key} is a parent hierarchy.`;
+          }
         }
       }
     }
@@ -144,7 +158,7 @@ class NewKey extends React.Component<RoutedProps, State> {
           errorTimerHandle: null,
         };
       });
-    }, 700);
+    }, 500);
 
 
     this.setState({

@@ -25,6 +25,8 @@ interface State {
 
   innerLoading: boolean;
   innerError: string | null;
+
+  deleteConfirm: boolean;
 }
 
 class Translate extends React.Component<RoutedProps, State> {
@@ -36,6 +38,7 @@ class Translate extends React.Component<RoutedProps, State> {
     error: null,
     innerLoading: false,
     innerError: null,
+    deleteConfirm: false,
   };
 
   public componentDidMount() {
@@ -62,14 +65,14 @@ class Translate extends React.Component<RoutedProps, State> {
 
   public render() {
     const languages = this.props.languages;
-    const {loading, translations,  error, innerLoading, innerError} = this.state;
+    const {loading, translations,  error, innerLoading, innerError, deleteConfirm} = this.state;
     const keyItem: Key | null = this.state.key;
 
     let content;
 
     if (loading || error) {
       content = (
-        <div className='tr-Center'>
+        <div className='tr-Center' key='loading'>
           {
             error ? (
               <div className='alert alert-danger'>{error}</div>
@@ -84,6 +87,48 @@ class Translate extends React.Component<RoutedProps, State> {
 
       const canDelete = !innerLoading;
 
+      const items = languages.length > 0 ?
+          languages.map(l => {
+          return (
+            <Item
+              key={l.id}
+              lang={l.id}
+              keyName={this.props.keyName}
+              onTranslationAdded={this.onTranslationAdded}
+              onTranslationUpdated={this.onTranslationUpdated}
+              translation={translations.find((t: Translation) => t.language === l.id)}
+            />
+          );
+        }) : (
+          <li className="list-group-item">No languages configured yet.</li>
+        );
+
+      const deleteButton = !deleteConfirm || !canDelete ? (
+        <button
+          className='btn btn-md btn-danger'
+          onClick={this.onDelete}
+          disabled={!canDelete}
+        >
+          <i className='fa fa-trash pr-2' style={{color: 'white'}} />
+          Delete key
+        </button>
+      ) : (
+
+        <div>
+          <div className="alert alert-danger">
+            Deleting this key will delete all translations for it and cannot be
+            undone.
+          </div>
+          <button
+            className='btn btn-md btn-danger'
+            onClick={this.onDelete}
+          >
+            <i className='fa fa-trash pr-2' style={{color: 'white'}} />
+            Really Delete!
+          </button>
+        </div>
+
+      );
 
       content = (
         <div>
@@ -97,32 +142,13 @@ class Translate extends React.Component<RoutedProps, State> {
             <div className='col-10'>
 
               <ul className='list-group'>
-                {
-                  languages.map(l => {
-                    return (
-                      <Item
-                        lang={l.id}
-                        keyName={this.props.keyName}
-                        onTranslationAdded={this.onTranslationAdded}
-                        translation={translations.find((t: Translation) => t.language === l.id)}
-                      />
-                    );
-                  })
-                }
+                {items}
 
               </ul>
 
             </div>
             <div className='col-2'>
-              <button
-                className='btn btn-md btn-danger'
-                onClick={this.onDelete}
-                disabled={!canDelete}
-              >
-                <i className='fa fa-trash pr-2' style={{color: 'white'}} />
-                Delete key
-              </button>
-
+              {deleteButton}
             </div>
           </div>
         </div>
@@ -147,7 +173,24 @@ class Translate extends React.Component<RoutedProps, State> {
   }
 
   @bind
+  private onTranslationUpdated(trans: Translation) {
+    this.setState((s) => {
+      return {
+        ...s,
+        translations: s.translations.map(t => {
+          return t.language === trans.language ? trans : t;
+        })
+      };
+    });
+  }
+
+  @bind
   private onDelete() {
+    if (!this.state.deleteConfirm) {
+      this.setState({deleteConfirm: true});
+      return;
+    }
+
     this.setState({innerLoading: false});
 
     command({
@@ -157,7 +200,10 @@ class Translate extends React.Component<RoutedProps, State> {
 
       },
     }).then(() => {
-      this.setState({innerLoading: false});
+      this.setState({
+        innerLoading: false,
+        deleteConfirm: false,
+      });
       // Go back to main page.
       this.props.history.push('/');
 
@@ -171,6 +217,7 @@ class Translate extends React.Component<RoutedProps, State> {
 
       this.setState({
         innerLoading: false,
+        deleteConfirm: false,
         innerError: err,
       });
     });

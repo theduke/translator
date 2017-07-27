@@ -1,6 +1,11 @@
 import React from 'react';
 import {Icon} from 'react-fa';
-import {Route, BrowserRouter, NavLink} from 'react-router-dom';
+import {Route as OriginalRoute, HashRouter, NavLink} from 'react-router-dom';
+
+// Need to overwrite route as any due to weird type checking issues with
+// typescript 2.4.
+const Route = OriginalRoute as any;
+
 
 import {BaseData, Session, Language, Key} from '../types';
 
@@ -33,7 +38,7 @@ class App extends React.Component<{}, State> {
 
   componentDidMount() {
     this.onLogin({
-      username: 'user',
+      username: 'admin',
       token: '',
     })
   }
@@ -66,11 +71,13 @@ class App extends React.Component<{}, State> {
           <div>
             <Route
               path='/admin'
-              render={() => (
-                <Admin data={d}
-                       languageAdded={this.languageAdded}
-                       languageRemoved={this.languageRemoved}  />
-              )}
+              render={() => {
+                return (
+                  <Admin data={d}
+                         languageAdded={this.languageAdded}
+                         languageRemoved={this.languageRemoved}  />
+                )
+              }}
             />
 
             <Route
@@ -86,7 +93,7 @@ class App extends React.Component<{}, State> {
 
             <Route
               path='/translate/:id'
-              render={({match}) => {
+              render={({match}: any) => {
                 const key = match.params.id;
                 return (
                   <Translate
@@ -109,20 +116,18 @@ class App extends React.Component<{}, State> {
     }
 
     return (
-      <BrowserRouter>
+      <HashRouter>
         <div className='tr-App'>
           <nav className='navbar navbar-inverse bg-inverse'>
             <NavLink className='navbar-brand' to='/'>Translator</NavLink>
-
               {nav}
-
           </nav>
 
           <div className='container pt-4'>
             {content}
           </div>
         </div>
-      </BrowserRouter>
+      </HashRouter>
     );
   }
 
@@ -137,7 +142,13 @@ class App extends React.Component<{}, State> {
       this.setState({
         data,
       });
-    }).catch(err => {
+    }).catch(e => {
+      let err;
+      if (e && e.error && e.error.code) {
+        err = e.error.code;
+      } else {
+        err = e + '';
+      }
       this.setState({error: err});
     });
   }
