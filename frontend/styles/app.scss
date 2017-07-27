@@ -1,0 +1,11 @@
+@import '~bootstrap/scss/bootstrap';
+
+button {
+  cursor: pointer;
+}
+
+.tr-Center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

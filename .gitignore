@@ -1,2 +1,9 @@
 /target/
 **/*.rs.bk
+backend/database.sqlite
+frontend/node_modules
+
+frontend/.idea
+backend/.idea
+.idea
+backend/target

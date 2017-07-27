@@ -1,6 +1,0 @@
-[package]
-name = "translateme"
-version = "0.1.0"
-authors = ["theduke <chris@theduke.at>"]
-
-[dependencies]
