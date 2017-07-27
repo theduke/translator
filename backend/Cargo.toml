@@ -27,6 +27,3 @@ version = "0.14.1"
 features = ["sqlite"]
 version = "0.14.0"
 
-[dependencies.juniper]
-features = ["rocket-handlers"]
-version = "0.8.1"

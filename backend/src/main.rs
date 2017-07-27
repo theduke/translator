@@ -13,7 +13,6 @@ extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate rocket_contrib;
 extern crate rocket;
-extern crate juniper;
 extern crate simple_jwt;
 
 mod error;
