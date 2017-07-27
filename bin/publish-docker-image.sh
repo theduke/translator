@@ -8,4 +8,4 @@ $(cd backend && cargo clean)
 # Go to project dir.
 echo `pwd`
 docker build -f docker/Dockerfile -t theduke/translator:latest .
-docker publish theduke/translator:latest
+docker push theduke/translator:latest
