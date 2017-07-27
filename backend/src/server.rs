@@ -5,8 +5,11 @@ use rocket::{self, State, Request, Response};
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::{Header, ContentType, Method};
 use rocket_contrib::Json;
+use rocket::response::Content;
 
-use ::db::{Db, BaseData, Translation, Command, TranslationData};
+use ::db::{Db, BaseData, Translation, Command, TranslationData, TranslationsExport};
+
+
 
 pub struct CORS;
 
@@ -50,8 +53,25 @@ pub enum CommandResult {
 }
 
 #[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+fn index() -> Content<&'static str> {
+    let index_file = include_bytes!("../../frontend/dist/index.html");
+    let content = ::std::str::from_utf8(&index_file[0..]).unwrap();
+
+    Content(ContentType::HTML, content)
+}
+
+#[get("/assets/bundle.js")]
+fn assets_js() -> Content<&'static str> {
+    let js_bundle = include_bytes!("../../frontend/dist/assets/bundle.js");
+    let content = ::std::str::from_utf8(&js_bundle[0..]).unwrap();
+
+    Content(ContentType::JavaScript, content)
+}
+
+#[get("/export/translations/<lang>")]
+fn export_translations(lang: String, db: State<Db>) -> Result<Json<TranslationsExport>, Box<Error>> {
+    let data = db.translations_export(lang)?;
+    Ok(Json(data))
 }
 
 #[get("/api/base-data")]
@@ -97,9 +117,11 @@ pub fn build_rocket() -> rocket::Rocket {
         .manage(db)
         .mount("/", routes![
             index,
+            export_translations,
             api_base_data,
             api_translations,
             api_command,
             api_command_options,
+            assets_js,
         ])
 }

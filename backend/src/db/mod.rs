@@ -1,10 +1,16 @@
 use std::error::Error;
+use std::ops::DerefMut;
 use std::time::Duration;
+use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use serde_json::value::{Value, to_value};
 use diesel;
 use diesel::prelude::*;
 use chrono::{Utc};
+
+use ::error::{Error as TError, ErrorKind as TErrorKind};
 
 embed_migrations!("./migrations");
 
@@ -211,6 +217,8 @@ pub struct TranslationData {
     translations: Vec<Translation>,
 }
 
+pub type TranslationsExport = BTreeMap<String, String>;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "cmd", content = "data")]
 pub enum Command {
@@ -265,7 +273,15 @@ pub struct Db {
 
 impl Db {
     pub fn new() -> Self {
-        let pool = get_pool("./database.sqlite");
+        let path = ::std::env::var("TRANSLATOR_DATA_PATH").unwrap_or("./data".to_string());
+        ::std::fs::create_dir_all(&path).unwrap();
+
+        let path = ::std::path::PathBuf::from(path);
+
+        let db_path = path.join("db.sqlite");
+        let db_path = db_path.to_str().unwrap();
+
+        let pool = get_pool(db_path);
 
         // Run migrations.
         embedded_migrations::run_with_output(
@@ -317,6 +333,23 @@ impl Db {
         translations: trans,
     })
   }
+
+    pub fn translations_export<S: AsRef<str>>(&self, language: S) -> Result<TranslationsExport, Box<Error>> {
+        let language = language.as_ref();
+        // Load all translations for the specified language.
+
+        use self::translations::dsl;
+
+        let trans: Vec<Translation> = dsl::translations.filter(dsl::language.eq(language))
+                .load(&*self.pool.get()?)?;
+
+        let mut export = TranslationsExport::new();
+        for t in trans {
+            export.insert(t.key, t.value);
+        }
+
+        Ok(export)
+    }
 
     pub fn login<S: AsRef<str>>(&self, username: S, password: S)
                                         -> Result<Session, Box<Error>>
@@ -441,6 +474,13 @@ impl Db {
   pub fn create_key(&self, key: &str, description: &Option<String>)
    -> Result<Key, Box<Error>>
   {
+      let key = key.trim().to_string();
+
+      if key == "" {
+          let err: TError = "Key may not be empty".into();
+          return Err(err.into());
+      }
+
     let key = Key {
       key: key.to_string(),
       description: description.clone(),

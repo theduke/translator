@@ -1,6 +1,6 @@
 [package]
 authors = ["theduke <chris@theduke.at>"]
-name = "translateme"
+name = "translator"
 version = "0.1.0"
 [dependencies]
 error-chain = "0.10.0"
