@@ -9,7 +9,7 @@ use diesel;
 use diesel::prelude::*;
 use chrono::{Utc};
 
-use r2d2;
+use r2d2::{self, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use r2d2_diesel::ConnectionManager;
 
@@ -20,6 +20,7 @@ use super::schema::*;
 use ::commands::{Command};
 
 pub type Connection = SqliteConnection;
+pub type PoolConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
 pub type Pool = r2d2::Pool<ConnectionManager<Connection>>;
 
 #[derive(Debug)]
@@ -124,6 +125,7 @@ impl MutableKeyTree {
 }
 
 
+#[derive(Clone)]
 pub struct Db {
     pool: Pool,
 }
@@ -159,9 +161,14 @@ impl Db {
         db
     }
 
+    pub fn con(&self) -> Result<PoolConnection, Box<Error>> {
+        let pool = self.pool.get()?;
+        Ok(pool)
+    }
+
     pub fn base_data(&self) -> Result<BaseData, Box<Error>> {
-        let langs: Vec<Language> = languages::table.load(&*self.pool.get()?)?;
-        let keys: Vec<Key> = keys::table.load(&*self.pool.get()?)?;
+        let langs: Vec<Language> = languages::table.load(&*self.con()?)?;
+        let keys: Vec<Key> = keys::table.load(&*self.con()?)?;
 
         Ok(BaseData{
             languages: langs,
@@ -172,7 +179,7 @@ impl Db {
     fn find_key(&self, key: &str) -> Result<Key, Box<Error>> {
         use self::keys::dsl;
 
-        let key = dsl::keys.filter(dsl::key.eq(key)).first(&*self.pool.get()?)?;
+        let key = dsl::keys.filter(dsl::key.eq(key)).first(&*self.con()?)?;
         Ok(key)
     }
 
@@ -183,7 +190,7 @@ impl Db {
 
         use self::translations::dsl::key as keycol;
         let trans: Vec<Translation> =
-            translations::table.filter(keycol.eq(&key)).load(&*self.pool.get()?)?;
+            translations::table.filter(keycol.eq(&key)).load(&*self.con()?)?;
 
         Ok(TranslationData{
             key: key_item,
@@ -192,7 +199,7 @@ impl Db {
     }
 
     pub fn build_key_tree(&self) -> Result<MutableKeyTree, Box<Error>> {
-        let keys: Vec<Key> = keys::table.load(&*self.pool.get()?)?;
+        let keys: Vec<Key> = keys::table.load(&*self.con()?)?;
 
         let mut t = MutableKeyTree::new_map();
 
@@ -210,7 +217,7 @@ impl Db {
         use self::translations::dsl;
 
         let trans: Vec<Translation> = dsl::translations.filter(dsl::language.eq(language))
-            .load(&*self.pool.get()?)?;
+            .load(&*self.con()?)?;
 
         let mut export = TranslationsExport::new();
         for t in trans {
@@ -223,7 +230,7 @@ impl Db {
     pub fn login<S: AsRef<str>>(&self, username: S, password: S)
                                 -> Result<Session, Box<Error>>
     {
-        let con = self.pool.get()?;
+        let con = self.con()?;
 
         let username = username.as_ref();
         let password = password.as_ref();
@@ -276,7 +283,7 @@ impl Db {
     {
         use self::users::dsl;
         let res = dsl::users.filter(dsl::username.eq(username.as_ref()))
-            .first(&*self.pool.get()?).optional()?;
+            .first(&*self.con()?).optional()?;
         Ok(res)
     }
 
@@ -284,7 +291,7 @@ impl Db {
                                         -> Result<User, Box<Error>>
     {
         let user = User::new(username.into(), role, password.into());
-        diesel::insert(&user).into(users::table).execute(&*self.pool.get()?)?;
+        diesel::insert(&user).into(users::table).execute(&*self.con()?)?;
         Ok(user)
     }
 
@@ -306,7 +313,7 @@ impl Db {
 
         diesel::update(dsl::users.filter(dsl::username.eq(&user.username)))
             .set(&user)
-            .execute(&*self.pool.get()?)?;
+            .execute(&*self.con()?)?;
         Ok(())
     }
 
@@ -318,7 +325,7 @@ impl Db {
         let username = username.as_ref();
 
         diesel::delete(dsl::users.filter(dsl::username.eq(username)))
-            .execute(&*self.pool.get()?)?;
+            .execute(&*self.con()?)?;
         Ok(())
     }
 
@@ -332,7 +339,7 @@ impl Db {
             created_at: Utc::now().timestamp(),
             created_by: None,
         };
-        diesel::insert(&lang).into(languages::table).execute(&*self.pool.get()?)?;
+        diesel::insert(&lang).into(languages::table).execute(&*self.con()?)?;
         Ok(lang)
     }
 
@@ -342,7 +349,7 @@ impl Db {
         use self::languages::dsl;
 
         diesel::delete(dsl::languages.filter(dsl::id.eq(id)))
-            .execute(&*self.pool.get()?)?;
+            .execute(&*self.con()?)?;
         Ok(())
     }
 
@@ -362,7 +369,7 @@ impl Db {
             created_at: Utc::now().timestamp(),
             created_by: None,
         };
-        diesel::insert(&key).into(keys::table).execute(&*self.pool.get()?)?;
+        diesel::insert(&key).into(keys::table).execute(&*self.con()?)?;
         Ok(key)
     }
 
@@ -372,7 +379,7 @@ impl Db {
         use self::keys::dsl;
 
         diesel::delete(dsl::keys.filter(dsl::key.eq(key)))
-            .execute(&*self.pool.get()?)?;
+            .execute(&*self.con()?)?;
         Ok(())
     }
 
@@ -389,7 +396,7 @@ impl Db {
             updated_at: now,
             created_by: None,
         };
-        diesel::insert(&translation).into(translations::table).execute(&*self.pool.get()?)?;
+        diesel::insert(&translation).into(translations::table).execute(&*self.con()?)?;
         Ok(translation)
     }
 
@@ -404,7 +411,7 @@ impl Db {
 
         diesel::update(q)
             .set(dsl::value.eq(value))
-            .execute(&*self.pool.get()?)?;
+            .execute(&*self.con()?)?;
         Ok(())
     }
 
@@ -418,7 +425,7 @@ impl Db {
             .filter(dsl::key.eq(key));
 
 
-        diesel::delete(q).execute(&*self.pool.get()?)?;
+        diesel::delete(q).execute(&*self.con()?)?;
         Ok(())
     }
 
