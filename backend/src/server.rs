@@ -8,9 +8,8 @@ use rocket_contrib::Json;
 use rocket::response::Content;
 use serde_json::{self};
 
-use ::db::{Db, BaseData, Command, TranslationData};
-
-
+use ::db::{Db, BaseData, TranslationData};
+use ::commands::{Command};
 
 pub struct CORS;
 

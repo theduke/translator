@@ -17,6 +17,7 @@ extern crate rocket;
 extern crate simple_jwt;
 
 mod error;
+mod commands;
 mod db;
 mod server;
 

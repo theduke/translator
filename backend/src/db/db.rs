@@ -13,10 +13,11 @@ use r2d2;
 use diesel::sqlite::SqliteConnection;
 use r2d2_diesel::ConnectionManager;
 
+embed_migrations!("./migrations");
+
 use ::error::{Error as TError};
 use super::schema::*;
-
-embed_migrations!("./migrations");
+use ::commands::{Command};
 
 pub type Connection = SqliteConnection;
 pub type Pool = r2d2::Pool<ConnectionManager<Connection>>;
@@ -122,54 +123,6 @@ impl MutableKeyTree {
     }
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "cmd", content = "data")]
-pub enum Command {
-    Login {
-        username: String,
-        password: String,
-    },
-    CreateUser {
-        username: String,
-        role: String,
-        password: String,
-    },
-    UpdateUser {
-        username: String,
-        password: String,
-    },
-    DeleteUser {
-        username: String,
-    },
-    CreateLanguage {
-        id: String,
-        name: String,
-        parent_id: Option<String>,
-    },
-    DeleteLanguage { id: String },
-    CreateKey {
-        key: String,
-        description: Option<String>,
-    },
-    DeleteKey {
-        key: String,
-    },
-    CreateTranslation {
-        lang: String,
-        key: String,
-        value: String,
-    },
-    UpdateTranslation {
-        lang: String,
-        key: String,
-        value: String,
-    },
-    DeleteTranslation {
-        lang: String,
-        key: String,
-    },
-}
 
 pub struct Db {
     pool: Pool,
