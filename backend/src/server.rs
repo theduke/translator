@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io::Cursor;
 
 use rocket::{self, State, Request, Response};
@@ -8,6 +7,7 @@ use rocket_contrib::Json;
 use rocket::response::Content;
 use serde_json::{self};
 
+use ::error::*;
 use ::db::{Db, BaseData, TranslationData};
 use ::commands::{Command};
 
@@ -91,9 +91,7 @@ impl ExportFormat {
 }
 
 #[get("/export/translations/<lang>?<args>")]
-fn export_translations(lang: String, args: ExportArgs, db: State<Db>)
-    -> Result<Content<String>, Box<Error>>
-{
+fn export_translations(lang: String, args: ExportArgs, db: State<Db>) -> Result<Content<String>> {
     let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
     let pretty = args.pretty.unwrap_or(false);
 
@@ -114,7 +112,7 @@ fn export_translations(lang: String, args: ExportArgs, db: State<Db>)
 }
 
 #[get("/export/keys?<args>")]
-fn export_keys(args: ExportArgs, db: State<Db>) -> Result<Content<String>, Box<Error>> {
+fn export_keys(args: ExportArgs, db: State<Db>) -> Result<Content<String>> {
     let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
     let pretty = args.pretty.unwrap_or(false);
 
@@ -136,17 +134,19 @@ fn export_keys(args: ExportArgs, db: State<Db>) -> Result<Content<String>, Box<E
 }
 
 #[get("/api/base-data")]
-fn api_base_data(db: State<Db>) -> Result<Json<BaseData>, Box<Error>> {
-  db.base_data()
-    .map(|d| Json(d))
+fn api_base_data(db: State<Db>) -> Result<Json<BaseData>> {
+  let data = db.base_data()
+    .map(|d| Json(d))?;
+    Ok(data)
 }
 
 #[get("/api/translations/<key>")]
 fn api_translations(key: String, db: State<Db>)
-  -> Result<Json<TranslationData>, Box<Error>>
+  -> Result<Json<TranslationData>>
 {
-  db.translations(key)
-    .map(|d| Json(d))
+  let data = db.translations(key)
+    .map(|d| Json(d))?;
+    Ok(data)
 }
 
 #[post("/api/command", data="<cmd>")]

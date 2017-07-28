@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::time::Duration;
 use std::collections::BTreeMap;
 use std::cell::RefCell;
@@ -15,7 +14,7 @@ use r2d2_diesel::ConnectionManager;
 
 embed_migrations!("./migrations");
 
-use ::error::{Error as TError};
+use ::error::*;
 use super::schema::*;
 use ::commands::{Command};
 
@@ -28,7 +27,7 @@ struct ConnectionCustomizer;
 
 impl r2d2::CustomizeConnection<Connection, ::r2d2_diesel::Error>
      for ConnectionCustomizer {
-    fn on_acquire(&self, conn: &mut Connection) -> Result<(), ::r2d2_diesel::Error> {
+    fn on_acquire(&self, conn: &mut Connection) -> ::std::result::Result<(), ::r2d2_diesel::Error> {
       use diesel::connection::SimpleConnection;
       conn.batch_execute(" PRAGMA foreign_keys = ON;").unwrap();
       Ok(())
@@ -161,12 +160,12 @@ impl Db {
         db
     }
 
-    pub fn con(&self) -> Result<PoolConnection, Box<Error>> {
+    pub fn con(&self) -> Result<PoolConnection> {
         let pool = self.pool.get()?;
         Ok(pool)
     }
 
-    pub fn base_data(&self) -> Result<BaseData, Box<Error>> {
+    pub fn base_data(&self) -> Result<BaseData> {
         let langs: Vec<Language> = languages::table.load(&*self.con()?)?;
         let keys: Vec<Key> = keys::table.load(&*self.con()?)?;
 
@@ -176,7 +175,7 @@ impl Db {
         })
     }
 
-    fn find_key(&self, key: &str) -> Result<Key, Box<Error>> {
+    fn find_key(&self, key: &str) -> Result<Key> {
         use self::keys::dsl;
 
         let key = dsl::keys.filter(dsl::key.eq(key)).first(&*self.con()?)?;
@@ -184,7 +183,7 @@ impl Db {
     }
 
     pub fn translations(&self, key: String)
-                        -> Result<TranslationData, Box<Error>>
+                        -> Result<TranslationData>
     {
         let key_item = self.find_key(key.as_str())?;
 
@@ -198,7 +197,7 @@ impl Db {
         })
     }
 
-    pub fn build_key_tree(&self) -> Result<MutableKeyTree, Box<Error>> {
+    pub fn build_key_tree(&self) -> Result<MutableKeyTree> {
         let keys: Vec<Key> = keys::table.load(&*self.con()?)?;
 
         let mut t = MutableKeyTree::new_map();
@@ -210,7 +209,7 @@ impl Db {
         Ok(t)
     }
 
-    pub fn translations_export<S: AsRef<str>>(&self, language: S) -> Result<TranslationsExport, Box<Error>> {
+    pub fn translations_export<S: AsRef<str>>(&self, language: S) -> Result<TranslationsExport> {
         let language = language.as_ref();
         // Load all translations for the specified language.
 
@@ -228,7 +227,7 @@ impl Db {
     }
 
     pub fn login<S: AsRef<str>>(&self, username: S, password: S)
-                                -> Result<Session, Box<Error>>
+                                -> Result<Session>
     {
         let con = self.con()?;
 
@@ -279,7 +278,7 @@ impl Db {
     }
 
     fn find_user<S: AsRef<str>>(&self, username: S)
-                                -> Result<Option<User>, Box<Error>>
+                                -> Result<Option<User>>
     {
         use self::users::dsl;
         let res = dsl::users.filter(dsl::username.eq(username.as_ref()))
@@ -288,7 +287,7 @@ impl Db {
     }
 
     pub fn create_user<S: Into<String>>(&self, username: S, role: Role, password: S)
-                                        -> Result<User, Box<Error>>
+                                        -> Result<User>
     {
         let user = User::new(username.into(), role, password.into());
         diesel::insert(&user).into(users::table).execute(&*self.con()?)?;
@@ -296,7 +295,7 @@ impl Db {
     }
 
     pub fn update_user<S: AsRef<str>>(&self, username: S, password: S)
-                                      -> Result<(), Box<Error>>
+                                      -> Result<()>
     {
         use self::users::dsl;
 
@@ -318,7 +317,7 @@ impl Db {
     }
 
     pub fn delete_user<S: AsRef<str>>(&self, username: S)
-                                      -> Result<(), Box<Error>>
+                                      -> Result<()>
     {
         use self::users::dsl;
 
@@ -330,7 +329,7 @@ impl Db {
     }
 
     pub fn create_language<S: Into<String>>(&self, id: S, name: S, parent_id: Option<String>)
-                                            -> Result<Language, Box<Error>>
+                                            -> Result<Language>
     {
         let lang = Language {
             id: id.into(),
@@ -344,7 +343,7 @@ impl Db {
     }
 
     pub fn delete_language(&self, id: &str)
-                           -> Result<(), Box<Error>>
+                           -> Result<()>
     {
         use self::languages::dsl;
 
@@ -354,13 +353,12 @@ impl Db {
     }
 
     pub fn create_key(&self, key: &str, description: &Option<String>)
-                      -> Result<Key, Box<Error>>
+                      -> Result<Key>
     {
         let key = key.trim().to_string();
 
         if key == "" {
-            let err: TError = "Key may not be empty".into();
-            return Err(err.into());
+            return Err("Key may not be empty".into());
         }
 
         let key = Key {
@@ -374,7 +372,7 @@ impl Db {
     }
 
     pub fn delete_key(&self, key: &str)
-                      -> Result<(), Box<Error>>
+                      -> Result<()>
     {
         use self::keys::dsl;
 
@@ -384,7 +382,7 @@ impl Db {
     }
 
     pub fn create_translation(&self, lang: &str, key: &str, value: &str)
-                              -> Result<Translation, Box<Error>>
+                              -> Result<Translation>
     {
         let now = Utc::now().timestamp();
 
@@ -401,7 +399,7 @@ impl Db {
     }
 
     pub fn update_translation(&self, lang: &str, key: &str, value: &str)
-                              -> Result<(), Box<Error>>
+                              -> Result<()>
     {
         use self::translations::dsl;
 
@@ -416,7 +414,7 @@ impl Db {
     }
 
     pub fn delete_translation(&self, lang: &str, key: &str)
-                              -> Result<(), Box<Error>>
+                              -> Result<()>
     {
         use self::translations::dsl;
 
@@ -430,7 +428,7 @@ impl Db {
     }
 
     pub fn command(&self, cmd: &Command)
-                   -> Result<Value, Box<Error>>
+                   -> Result<Value>
     {
         use self::Command::*;
         match *cmd {
