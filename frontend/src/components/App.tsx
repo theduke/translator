@@ -36,13 +36,6 @@ class App extends React.Component<{}, State> {
     super(props, ctx);
   }
 
-  componentDidMount() {
-    this.onLogin({
-      username: 'admin',
-      token: '',
-    })
-  }
-
   public render() {
     const {data, error, session} = this.state;
 
