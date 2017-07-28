@@ -6,8 +6,9 @@ use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::{Header, ContentType, Method};
 use rocket_contrib::Json;
 use rocket::response::Content;
+use serde_json::{self};
 
-use ::db::{Db, BaseData, Translation, Command, TranslationData, TranslationsExport};
+use ::db::{Db, BaseData, Command, TranslationData};
 
 
 
@@ -68,10 +69,71 @@ fn assets_js() -> Content<&'static str> {
     Content(ContentType::JavaScript, content)
 }
 
-#[get("/export/translations/<lang>")]
-fn export_translations(lang: String, db: State<Db>) -> Result<Json<TranslationsExport>, Box<Error>> {
+#[derive(FromForm)]
+struct ExportArgs {
+    format: Option<String>,
+    pretty: Option<bool>,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+enum ExportFormat {
+    Json,
+    Javascript,
+}
+
+impl ExportFormat {
+    fn from_str(s: &str) -> Option<Self> {
+        match s.trim() {
+            "json" => Some(ExportFormat::Json),
+            "javascript" => Some(ExportFormat::Javascript),
+            _ => None,
+        }
+    }
+}
+
+#[get("/export/translations/<lang>?<args>")]
+fn export_translations(lang: String, args: ExportArgs, db: State<Db>)
+    -> Result<Content<String>, Box<Error>>
+{
+    let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
+    let pretty = args.pretty.unwrap_or(false);
+
     let data = db.translations_export(lang)?;
-    Ok(Json(data))
+    let mut json = if pretty {
+        serde_json::to_string_pretty(&data)?
+    } else {
+        serde_json::to_string(&data)?
+    };
+
+    if format == ExportFormat::Javascript {
+        json = format!(
+            "// This file was auto-generated. Do not edit by hand!\n\n/* tslint:disable */\n\nexport const translations = {};\n\nexport default translations;\n",
+            json);
+    }
+
+    Ok(Content(ContentType::JSON, json))
+}
+
+#[get("/export/keys?<args>")]
+fn export_keys(args: ExportArgs, db: State<Db>) -> Result<Content<String>, Box<Error>> {
+    let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
+    let pretty = args.pretty.unwrap_or(false);
+
+    let tree = db.build_key_tree()?;
+    let data = tree.to_json_value();
+    let mut json = if pretty {
+        serde_json::to_string_pretty(&data)?
+    } else {
+        serde_json::to_string(&data)?
+    };
+
+    if format == ExportFormat::Javascript {
+        json = format!(
+            "// This file was auto-generated. Do not edit by hand!\n\n/* tslint:disable */\n\nexport const intlKeys = {};\n\nexport default intlKeys;\n",
+            json);
+    }
+
+    Ok(Content(ContentType::JSON, json))
 }
 
 #[get("/api/base-data")]
@@ -118,6 +180,7 @@ pub fn build_rocket() -> rocket::Rocket {
         .mount("/", routes![
             index,
             export_translations,
+            export_keys,
             api_base_data,
             api_translations,
             api_command,
