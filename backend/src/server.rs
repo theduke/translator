@@ -171,11 +171,21 @@ fn api_command_options() -> &'static str {
     ""
 }
 
-pub fn build_rocket() -> rocket::Rocket {
-    let db = Db::new();
-    rocket::ignite()
+pub fn run(app: ::app::App) {
+    use rocket::config::*;
+
+    let c = app.config();
+
+    let config = ConfigBuilder::new(Environment::Production)
+        .port(c.port)
+        .log_level(LoggingLevel::Debug)
+        .secret_key(c.secret.as_str())
+        .workers(8)
+        .unwrap();
+
+    rocket::custom(config, true)
         .attach(CORS)
-        .manage(db)
+        .manage(app.db())
         .mount("/", routes![
             index,
             export_translations,
@@ -186,4 +196,5 @@ pub fn build_rocket() -> rocket::Rocket {
             api_command_options,
             assets_js,
         ])
+        .launch();
 }

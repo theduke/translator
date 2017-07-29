@@ -2,6 +2,7 @@
 #![plugin(rocket_codegen)]
 #![feature(custom_derive)]
 
+extern crate dotenv;
 #[macro_use] extern crate error_chain;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
@@ -19,8 +20,10 @@ extern crate simple_jwt;
 mod error;
 mod commands;
 mod db;
+mod config;
+mod app;
 mod server;
 
-fn main() {
-    server::build_rocket().launch();
+fn main(){
+    app::run();
 }

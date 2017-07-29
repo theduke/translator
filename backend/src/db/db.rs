@@ -36,7 +36,7 @@ impl r2d2::CustomizeConnection<Connection, ::r2d2_diesel::Error>
     fn on_release(&self, _: Connection) {}
 }
 
-pub fn get_pool<S: Into<String>>(path: S) -> Pool {
+pub fn get_pool<S: Into<String>>(path: S) -> Result<Pool> {
 
     let config = r2d2::Config::builder()
         .pool_size(1)
@@ -47,7 +47,7 @@ pub fn get_pool<S: Into<String>>(path: S) -> Pool {
         .build();
     let manager = ConnectionManager::<Connection>::new(path.into());
     let pool = r2d2::Pool::new(config, manager)
-      .expect("Failed to create pool.");
+        .chain_err(|| "Could not initialize database pool");
     pool
 }
 
@@ -130,34 +130,31 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn new() -> Self {
-        let path = ::std::env::var("TRANSLATOR_DATA_PATH").unwrap_or("./data".to_string());
-        ::std::fs::create_dir_all(&path).unwrap();
-
-        let path = ::std::path::PathBuf::from(path);
-
+    pub fn new(data_path: &str) -> Result<Self> {
+        let path = ::std::path::PathBuf::from(data_path);
         let db_path = path.join("db.sqlite");
         let db_path = db_path.to_str().unwrap();
 
-        let pool = get_pool(db_path);
+        let pool = get_pool(db_path)?;
 
         // Run migrations.
         embedded_migrations::run_with_output(
-            &*pool.get().unwrap(),
-            &mut ::std::io::stderr()).unwrap();
+            &*pool.get()?,
+            &mut ::std::io::stderr())
+            .chain_err(|| "Could not run database migrations")?;
 
         let db = Db {
             pool,
         };
 
         // Ensure admin user exists.
-        let admin = db.find_user("admin").unwrap();
+        let admin = db.find_user("admin")?;
         if admin.is_none() {
             eprintln!("Creating admin user...");
-            db.create_user("admin", Role::Admin, "admin").unwrap();
+            db.create_user("admin", Role::Admin, "admin")?;
         }
 
-        db
+        Ok(db)
     }
 
     pub fn con(&self) -> Result<PoolConnection> {
