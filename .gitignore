@@ -1,10 +1,10 @@
-/target/
+**/.idea
 **/*.rs.bk
-backend/database.sqlite
-frontend/node_modules
+**/.env
 
-frontend/.idea
-backend/.idea
-.idea
-backend/target
+data
+
 backend/data
+backend/target
+
+frontend/node_modules
