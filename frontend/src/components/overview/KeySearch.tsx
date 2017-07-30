@@ -2,10 +2,10 @@ import {bind} from 'decko';
 import React from 'react';
 import {NavLink} from 'react-router-dom';
 
-import {BaseData, Key} from 'translator/types';
+import {Key} from 'translator/types';
 
 interface Props {
-  data: BaseData;
+  keys: Key[];
 }
 
 interface State {
@@ -26,9 +26,10 @@ class KeySearch extends React.Component<Props, State> {
     const showResults = !!term;
 
     const items = results.length > 0 ? (
-      results.map((k: Key) => {
+      results.map((k: Key, idx) => {
         return (
-          <NavLink className='btn btn-primary btn-md ml-2 mr-2'
+          <NavLink className='btn btn-primary btn-md ml-2 mr-2 mb-2'
+                   key={idx}
                    to={`/translate/${k.key}`}
           >
             <i key='icon' className='fa fa-dot-circle-o pr-2' />
@@ -41,26 +42,28 @@ class KeySearch extends React.Component<Props, State> {
     );
 
     return (
-      <div className="mb-3">
-        <h3>Search</h3>
-        <div>
-          <input
-            type='text'
-            value={term}
-            onChange={this.onChange}
-            placeholder='Key name search...'
-            className='w-100 form-control'/>
+      <div className="mb-3 card">
+        <div className="card-block">
+          <h3 className="card-title">Key Search</h3>
+          <div>
+            <input
+              type='text'
+              value={term}
+              onChange={this.onChange}
+              placeholder='Enter key name...'
+              className='w-100 form-control'/>
+          </div>
+
+          { showResults && (
+            <ul className='list-group'>
+              <li className='list-group-item'>
+                {items}
+              </li>
+            </ul>
+          )
+          }
+
         </div>
-
-        { showResults && (
-          <ul className='list-group'>
-            <li className='list-group-item'>
-              {items}
-            </li>
-          </ul>
-        )
-        }
-
       </div>
     );
   }
@@ -68,7 +71,7 @@ class KeySearch extends React.Component<Props, State> {
   @bind
   onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const term = e.target.value.trim();
-    const results = !term ? [] : this.props.data.keys.filter(k => {
+    const results = !term ? [] : this.props.keys.filter(k => {
       return k.key.search(term) !== -1;
     });
     this.setState({term, results});

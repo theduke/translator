@@ -1,20 +1,25 @@
 import {bind} from 'decko';
 import React from 'react';
+import {graphql, compose} from 'react-apollo';
 
-import {BaseData, Key} from 'translator/types';
+import {Language, Key} from 'translator/types';
+import * as queries from 'translator/queries';
 
 import NewKey from './NewKey';
 import KeyTree from './KeyTree';
 import KeySearch from './KeySearch';
 
+// import Languages from 'translator/components/admin/Languages';
+
 export interface KeyTree {
   [name: string]: KeyTree | (Key & {_item: boolean});
 }
 
-function buildKeyTree(data: BaseData): KeyTree {
+function buildKeyTree(keys: Key[]): KeyTree {
+
 
   // Sort keys by name first..
-  const keys = data.keys.sort((ak, bk) => {
+  keys = [...keys].sort((ak, bk) => {
     const a = ak.key;
     const b = bk.key;
     if (a < b) { return -1; }
@@ -46,44 +51,17 @@ function buildKeyTree(data: BaseData): KeyTree {
   return tree;
 }
 
-function buildKeyExport(data: BaseData): KeyTree {
-
-  // Sort keys by name first..
-  const keys = data.keys.sort((ak, bk) => {
-    const a = ak.key;
-    const b = bk.key;
-    if (a < b) { return -1; }
-    else if (a > b) { return 1; }
-    else { return 0; }
-  });
-
-  const tree = {} as any;
-
-  for (const item of keys) {
-    let parts = item.key.split('.');
-
-    let name = '';
-    let subTree = tree;
-    while (true) {
-      [name, ...parts] = parts;
-
-      if (parts.length === 0) {
-        subTree[name] = item.key;
-        break;
-      } else {
-        if (!(name in subTree)) {
-          subTree[name] = {};
-        }
-        subTree = subTree[name] as any;
-      }
-    }
-  }
-  return tree;
-}
-
 interface Props {
-  data: BaseData;
-  onKeyAdded: (key: Key) => void;
+  languages: {
+    loading: boolean;
+    error: {} | null;
+    languages: Language[];
+  };
+  keys: {
+    loading: boolean;
+    error: {} | null;
+    keys: Key[];
+  };
 }
 
 interface State {
@@ -96,32 +74,61 @@ class Overview extends React.Component<Props, State> {
   };
 
   public render() {
-    const {data, onKeyAdded} = this.props;
-    const tree = buildKeyTree(data);
+    const props = this.props;
+    const loading = props.languages.loading || props.keys.loading;
+    const error = props.languages.error || props.keys.error;
+
     const {openKeys} = this.state;
+
+    if (error) {
+      return (
+        <div className="tr-Center">
+          <div className="alert alert-danger">
+            {error}
+          </div>
+        </div>
+      );
+    } else if (loading) {
+      return (
+        <div className="tr-Center">
+          Loading...
+        </div>
+      );
+    }
+
+    const keys = props.keys.keys;
+    const languages = props.languages.languages;
+
+    const tree = buildKeyTree(keys);
+
+    const NewKey2 = NewKey as any;
 
     return (
       <div className='h-100'>
         <div className='row'>
           <div className='col-9'>
-            <KeySearch data={data} />
 
-            <div>
-              <h3>Browse</h3>
+            <KeySearch keys={keys} />
 
-              <KeyTree tree={tree} open={openKeys} show={this.showTree} path='' />
+            <div className="card">
+              <div className="card-block">
+
+                <h3 className="card-title">Browse</h3>
+
+                <KeyTree tree={tree} open={openKeys} show={this.showTree} path='' />
+              </div>
             </div>
 
           </div>
           <div className='col-3'>
-            <NewKey keyTree={tree} onAdded={onKeyAdded} />
+            <NewKey2 keyTree={tree} />
 
             <div className='card mt-3'>
               <div className='card-block'>
                 <h4 className='card-title'>Export</h4>
 
                 <div>
-                  <button className='btn btn-secondary' onClick={this.exportKeys}>
+                  <button className='btn btn-secondary'>
                     Export keys
                   </button>
                 </div>
@@ -131,7 +138,7 @@ class Overview extends React.Component<Props, State> {
 
                   <ul className='list-group'>
                     {
-                      data.languages.map(l => {
+                      languages.map(l => {
                         return (
                             <a
                               key={l.id}
@@ -157,15 +164,6 @@ class Overview extends React.Component<Props, State> {
   }
 
   @bind
-  private exportKeys() {
-    const exp = buildKeyExport(this.props.data);
-    const json = JSON.stringify(exp);
-
-    const w = window.open();
-    w.document.write(json);
-  }
-
-  @bind
   showTree(key: string) {
     this.setState({
       openKeys: key.split('.'),
@@ -173,4 +171,7 @@ class Overview extends React.Component<Props, State> {
   }
 }
 
-export default Overview;
+export default compose(
+  graphql(queries.languages, {name: 'languages'}),
+  graphql(queries.keys, {name: 'keys'}),
+)(Overview);

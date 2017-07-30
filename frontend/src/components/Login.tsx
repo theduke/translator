@@ -1,11 +1,12 @@
-import React from 'react';
 import {bind} from 'decko';
+import React from 'react';
+import { gql, graphql } from 'react-apollo';
 
-import {command} from 'translator/api';
-import {Session} from 'translator/types';
+import {ApiToken} from 'translator/types';
 
 interface Props {
-  onLogin: (session: Session) => void;
+  onLogin: (token: ApiToken) => void;
+  mutate: any;
 }
 
 interface State {
@@ -86,30 +87,27 @@ class Login extends React.Component<Props, State> {
       loading: true,
       error: null,
     });
-    command({
-      cmd: 'Login',
-      data: {
-        username,
-        password,
-      },
-    }).then((res) => {
-      const session = res.data as Session;
-      this.setState({loading: false});
-      this.props.onLogin(session);
-    }).catch((e) => {
-      let err;
-      if (e && e.error && e.error.code) {
-        err = e.error.code;
-      } else {
-        err = e + '';
-      }
-
+    this.props.mutate({
+      variables: { user: username, pw: password },
+    }).then((res:any ) => {
+      this.props.onLogin(res);
+    }).catch((e: any) => {
       this.setState({
         loading: false,
-        error: err,
+        error: e + '',
       });
     });
   }
 }
 
-export default Login;
+const loginMutation = gql`
+  mutation login($user: String!, $pw: String!) {
+    login(user: $user, password: $pw) {
+      token
+      createdBy
+      expiresAt
+    }
+  }
+`;
+
+export default graphql(loginMutation)(Login as any) as any;

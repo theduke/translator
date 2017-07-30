@@ -1,8 +1,11 @@
-import React from 'react';
-
-import {Language} from '../../types';
 import {bind} from 'decko';
-import {command} from 'translator/api';
+import React from 'react';
+import {gql, graphql} from 'react-apollo';
+
+import * as queries from 'translator/queries';
+
+
+// import {Language} from '../../types';
 
 export interface State {
   loading: boolean;
@@ -13,7 +16,11 @@ export interface State {
 }
 
 export interface Props {
-  languageAdded: (lang: Language) => void;
+  create: (data: {
+    id: string,
+    name: string,
+    parentId: string | null,
+  }) => Promise<any>;
 }
 
 export class NewLanguage extends React.Component<Props, State> {
@@ -105,13 +112,10 @@ export class NewLanguage extends React.Component<Props, State> {
 
     this.setState({loading: true, error: null});
 
-    command({
-      cmd: 'CreateLanguage',
-      data: {
-        id,
-        name,
-        parent_id: parent || null,
-      },
+    this.props.create({
+      id,
+      name,
+      parentId: parent || null,
     }).then(() => {
       this.setState({
         loading: false,
@@ -119,27 +123,43 @@ export class NewLanguage extends React.Component<Props, State> {
         name: '',
         parent: '',
       });
-      this.props.languageAdded({
-        id,
-        name,
-        parent_id: parent || null,
-        created_at: 0,
-        created_by: '',
-      });
 
     }).catch(e => {
-      let err;
-      if (e && e.error && e.error.code) {
-        err = e.error.code;
-      } else {
-        err = e + '';
-      }
-
       this.setState({
         loading: false,
-        error: err,
+        error: e.toString(),
       });
     });
   }
 }
-export default NewLanguage;
+
+const createMutation = gql`
+mutation CreateLanguage($lang: NewLanguage!) {
+  createLanguage(lang: $lang) {
+    id
+    name
+    parentId
+  }
+}
+`;
+
+
+export default graphql(createMutation, {
+  props: ({mutate}) => ({
+    create: (data: any) => {
+      return (mutate as any)({
+        variables: {lang: data},
+
+        update: (store: any, { data: { createLanguage } }: any) => {
+          // Read the data from our cache for this query.
+          const data = store.readQuery({ query: queries.languages });
+          // Add our comment from the mutation to the end.
+          data.languages.push(createLanguage);
+          // Write our data back to the cache.
+          store.writeQuery({ query: queries.languages, data });
+        },
+
+      });
+    },
+  }),
+})(NewLanguage);

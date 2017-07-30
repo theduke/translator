@@ -1,19 +1,20 @@
 import React from 'react';
-import {Command, Translation} from 'translator/types';
+import {graphql} from 'react-apollo';
 import {bind} from 'decko';
-import {command} from 'translator/api';
+
+import {NewTranslation, Translation} from 'translator/types'
+import * as queries from 'translator/queries';
 
 interface Props {
   keyName: string;
   lang: string;
   translation?: Translation | null;
-
-  onTranslationAdded: (translation: Translation) => void;
-  onTranslationUpdated: (translation: Translation) => void;
+  save: (trans: NewTranslation) => Promise<any>;
 }
 
 interface State {
   value: string;
+  dirty: boolean;
   saving: boolean;
   error: string | null;
 }
@@ -24,7 +25,8 @@ class Item extends React.Component<Props, State> {
     super(props, ctx);
 
     this.state = {
-      value: props.translation ? props.translation.value : '',
+      value: '',
+      dirty: false,
       saving: false,
       error: null,
     };
@@ -32,13 +34,17 @@ class Item extends React.Component<Props, State> {
 
   public render() {
     const {lang, translation} = this.props;
-    const {value, saving} = this.state;
+    const {value, saving, dirty} = this.state;
+
+    const curValue = dirty ? value : (translation ? translation.value : '');
 
     let showSaveButton = false;
-    if (value && !translation) {
-      showSaveButton = true;
-    } else if (translation && translation.value != value) {
-      showSaveButton = true;
+    if (dirty) {
+      if (value && !translation) {
+        showSaveButton = true;
+      } else if (translation && translation.value != value) {
+        showSaveButton = true;
+      }
     }
 
     const saveBtnDisabled = showSaveButton && saving;
@@ -57,7 +63,7 @@ class Item extends React.Component<Props, State> {
           <div className='col-7'>
             <textarea
               className='w-100 form-control'
-              value={value}
+              value={curValue}
               onChange={this.onValueChange}
               rows={3}
             />
@@ -87,6 +93,7 @@ class Item extends React.Component<Props, State> {
   onValueChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     this.setState({
       value: e.target.value,
+      dirty: true,
     });
   }
 
@@ -98,57 +105,49 @@ class Item extends React.Component<Props, State> {
 
     const data = {
       key: this.props.keyName,
-      lang: this.props.lang,
+      language: this.props.lang,
       value,
     };
 
-    let cmd: Command;
-    if (this.props.translation) {
-      cmd = {
-        cmd: 'UpdateTranslation',
-        data,
-      };
-    } else {
-      cmd = {
-        cmd: 'CreateTranslation',
-        data,
-      };
-    }
-    const isNew = cmd.cmd === 'CreateTranslation';
-
-    command(cmd)
+    this.props.save(data)
       .then(() => {
         this.setState({
           saving: false,
+          value: '',
+          dirty: false,
         });
 
-        if (isNew) {
-          this.props.onTranslationAdded({
-            ...data,
-            language: this.props.lang,
-            created_at: 0,
-            created_by: '',
-            updated_at: 0,
-          });
-        } else {
-          this.props.onTranslationUpdated({...this.props.translation, value});
-        }
-
-      }).catch(e => {
-        console.log('Could not save translation', e);
-        let err;
-        if (e && e.error && e.error.code) {
-          err = e.error.code;
-        } else {
-          err = e + '';
-        }
-
+      }).catch((e: any) => {
         this.setState({
           saving: false,
-          error: err,
+          error: e.toString(),
         });
       });
   }
 }
 
-export default Item;
+export default graphql(queries.translate, {
+  props: ({mutate}: any) => ({
+    save: (translation: NewTranslation) => {
+      return (mutate as any)({
+        variables: {translation},
+        update: (store: any, {data: {translate}}: any) => {
+          const spec = {
+            query: queries.keyWithTranslations,
+            variables: {key: translate.key},
+          };
+          const data = store.readQuery(spec);
+          data.key.translations = data.key.translations.map((t: Translation) => {
+            if (t.language === translate.language) {
+              return translate;
+            } else {
+              return t;
+            }
+          });
+          store.writeQuery({...spec, data});
+
+        }
+      });
+    },
+  }),
+})(Item) as any;
