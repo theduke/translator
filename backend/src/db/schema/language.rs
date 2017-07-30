@@ -19,3 +19,10 @@ pub struct Language {
     pub created_at: i64,
     pub created_by: Option<String>,
 }
+
+#[derive(GraphQLInputObject, Debug, Clone)]
+pub struct NewLanguage {
+    pub id: String,
+    pub name: String,
+    pub parent_id: Option<String>,
+}

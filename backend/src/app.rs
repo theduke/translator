@@ -2,14 +2,15 @@ use std::process::exit;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use ::db::Db;
-
+use ::db::{Pool, build_pool, Db};
+use ::repo::Repo;
 use ::config::Config;
+use ::error::*;
 
 #[derive(Clone)]
 pub struct AppInner {
     config: Config,
-    db: Db,
+    db_pool: Pool,
 }
 
 impl AppInner {
@@ -17,8 +18,9 @@ impl AppInner {
         &self.config
     }
 
-    pub fn db(&self) -> Db {
-        self.db.clone()
+
+    pub fn db(&self) -> Result<Db> {
+        Db::from_pool(&self.db_pool)
     }
 
     /// Initialize a new app.
@@ -43,8 +45,8 @@ impl AppInner {
             },
         }
 
-        // Initialize db.
-        let db = match Db::new(&config.data_path) {
+        // Initialize the db pool.
+        let db_pool = match build_pool(&config.data_path) {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("Could not initialize database: {}", e);
@@ -54,15 +56,24 @@ impl AppInner {
 
         let inner = AppInner{
             config,
-            db
+            db_pool,
         };
         let app = App(Arc::new(inner));
+
+        app.repo().ensure_admin_user().unwrap();
+
         ::server::run(app);
     }
 }
 
 #[derive(Clone)]
 pub struct App(Arc<AppInner>);
+
+impl App {
+    pub fn repo(&self) -> Repo {
+        Repo::new(self.clone())
+    }
+}
 
 impl Deref for App {
     type Target = AppInner;

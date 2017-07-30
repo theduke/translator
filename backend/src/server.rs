@@ -5,11 +5,15 @@ use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::{Header, ContentType, Method};
 use rocket_contrib::Json;
 use rocket::response::Content;
+use rocket::response::content;
 use serde_json::{self};
+use juniper::rocket_handlers;
 
 use ::error::*;
 use ::db::{Db, BaseData, TranslationData};
-use ::commands::{Command};
+use ::commands::{Ctx};
+use ::api::{self, Schema};
+use ::app::App;
 
 pub struct CORS;
 
@@ -25,7 +29,7 @@ impl Fairing for CORS {
         if request.method() == Method::Options || response.content_type() == Some(ContentType::JSON) {
             response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
             response.set_header(Header::new("Access-Control-Allow-Methods", "POST, GET, OPTIONS"));
-            response.set_header(Header::new("Access-Control-Allow-Headers", "Content-Type"));
+            response.set_header(Header::new("Access-Control-Allow-Headers", "Content-Type,, Authorization, Access-Control-Allow-Headers"));
             response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
         }
 
@@ -90,6 +94,7 @@ impl ExportFormat {
     }
 }
 
+/*
 #[get("/export/translations/<lang>?<args>")]
 fn export_translations(lang: String, args: ExportArgs, db: State<Db>) -> Result<Content<String>> {
     let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
@@ -132,6 +137,40 @@ fn export_keys(args: ExportArgs, db: State<Db>) -> Result<Content<String>> {
 
     Ok(Content(ContentType::JSON, json))
 }
+*/
+
+#[get("/api/graphiql")]
+fn graphiql() -> content::Html<String> {
+    rocket_handlers::graphiql_source("/api/graphql")
+}
+
+
+#[options("/api/graphql")]
+fn get_graphql_options() -> &'static str {
+    ""
+}
+
+#[get("/api/graphql?<request>")]
+fn get_graphql_handler(
+    request: rocket_handlers::GraphQLRequest,
+    schema: State<Schema>,
+    app: State<App>,
+) -> rocket_handlers::GraphQLResponse {
+    let ctx = Ctx::new(app.clone(), None);
+    request.execute(&schema, &ctx)
+}
+
+#[post("/api/graphql", data="<request>")]
+fn post_graphql_handler(
+    request: rocket_handlers::GraphQLRequest,
+    schema: State<Schema>,
+    app: State<App>,
+) -> rocket_handlers::GraphQLResponse {
+    let ctx = Ctx::new(app.clone(), None);
+    request.execute(&schema, &ctx)
+}
+
+/*
 
 #[get("/api/base-data")]
 fn api_base_data(db: State<Db>) -> Result<Json<BaseData>> {
@@ -166,35 +205,44 @@ fn api_command(cmd: Json<Command>, db: State<Db>)
     Json(res)
 }
 
-#[options("/api/command")]
-fn api_command_options() -> &'static str {
-    ""
-}
+
+
+*/
 
 pub fn run(app: ::app::App) {
     use rocket::config::*;
 
-    let c = app.config();
 
-    let config = ConfigBuilder::new(Environment::Production)
-        .port(c.port)
-        .log_level(LoggingLevel::Debug)
-        .secret_key(c.secret.as_str())
-        .workers(8)
-        .unwrap();
+    let config = {
+        let c = app.config();
+        ConfigBuilder::new(Environment::Production)
+            .port(c.port)
+            .log_level(LoggingLevel::Debug)
+            .secret_key(c.secret.as_str())
+            .workers(8)
+            .unwrap()
+    };
+
+    let schema = api::new_schema();
 
     rocket::custom(config, true)
         .attach(CORS)
-        .manage(app.db())
+        .manage(app)
+        .manage(schema)
         .mount("/", routes![
             index,
-            export_translations,
-            export_keys,
-            api_base_data,
-            api_translations,
-            api_command,
-            api_command_options,
+            // export_translations,
+            // export_keys,
+            // api_base_data,
+            // api_translations,
+            // api_command,
+            // api_command_options,
             assets_js,
+            // Juniper graphql handlers.
+            graphiql,
+            get_graphql_handler,
+            get_graphql_options,
+            post_graphql_handler,
         ])
         .launch();
 }

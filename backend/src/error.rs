@@ -8,15 +8,9 @@ error_chain!{
     }
 
     errors {
-
-        UnknownUser {
-
-        }
-        InvalidPassword {
-
-        }
-        InvalidRole {
-
-        }
+        UnknownUser { }
+        InvalidPassword { }
+        InvalidRole { }
+        PermissionDenied {}
     }
 }

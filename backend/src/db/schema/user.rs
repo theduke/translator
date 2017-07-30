@@ -1,6 +1,7 @@
 use chrono::Utc;
 
 use ::error::*;
+use super::{ApiToken, TokenKind};
 
 table!(
   users(username) {
@@ -75,15 +76,23 @@ impl User {
     scrypt_check(pw.as_ref(), &self.password_hash).unwrap_or(false)
   }
 
-    pub fn build_session_token(&self) -> Result<String> {
+    pub fn build_session_token(&self) -> Result<ApiToken> {
         use simple_jwt::{encode, Claim, Algorithm};
 
         let mut claim = Claim::default();
         claim.set_iss("translator");
+        claim.set_iat(Utc::now().timestamp() as u64);
         claim.set_payload_field("username", &self.username);
 
-        let token = encode(&claim, "secret", Algorithm::HS256)
+        let jwt = encode(&claim, "secret", Algorithm::HS256)
             .chain_err(|| "Could not create jwt token")?;
-        Ok(token)
+
+        Ok(ApiToken{
+            token: jwt,
+            kind: TokenKind::Session.to_str().to_string(),
+            created_at: Utc::now().timestamp(),
+            expires_at: None,
+            created_by: Some(self.username.clone()),
+        })
     }
 }

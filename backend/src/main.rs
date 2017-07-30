@@ -16,12 +16,16 @@ extern crate r2d2_diesel;
 extern crate rocket_contrib;
 extern crate rocket;
 extern crate simple_jwt;
+#[macro_use] extern crate juniper;
+#[macro_use] extern crate juniper_codegen;
 
 mod error;
 mod commands;
 mod db;
 mod config;
+mod repo;
 mod app;
+mod api;
 mod server;
 
 fn main(){

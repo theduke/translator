@@ -21,3 +21,10 @@ pub struct Translation {
     pub updated_at: i64,
     pub created_by: Option<String>,
 }
+
+#[derive(GraphQLInputObject, Debug)]
+pub struct NewTranslation {
+    pub language: String,
+    pub key: String,
+    pub value: String,
+}

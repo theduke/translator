@@ -16,7 +16,6 @@ embed_migrations!("./migrations");
 
 use ::error::*;
 use super::schema::*;
-use ::commands::{Command};
 
 pub type Connection = SqliteConnection;
 pub type PoolConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
@@ -36,7 +35,10 @@ impl r2d2::CustomizeConnection<Connection, ::r2d2_diesel::Error>
     fn on_release(&self, _: Connection) {}
 }
 
-pub fn get_pool<S: Into<String>>(path: S) -> Result<Pool> {
+pub fn build_pool(data_path: &str) -> Result<Pool> {
+    let path = ::std::path::PathBuf::from(data_path);
+    let db_path = path.join("db.sqlite");
+    let db_path = db_path.to_str().unwrap().to_string();
 
     let config = r2d2::Config::builder()
         .pool_size(1)
@@ -45,10 +47,22 @@ pub fn get_pool<S: Into<String>>(path: S) -> Result<Pool> {
         .connection_timeout(Duration::new(1, 0))
         .connection_customizer(Box::new(ConnectionCustomizer))
         .build();
-    let manager = ConnectionManager::<Connection>::new(path.into());
+    let manager = ConnectionManager::<Connection>::new(db_path);
+
     let pool = r2d2::Pool::new(config, manager)
-        .chain_err(|| "Could not initialize database pool");
-    pool
+        .chain_err(|| "Could not initialize database pool")?;
+
+    {
+        let con = &*pool.get()?;
+        // Run migrations.
+        embedded_migrations::run_with_output(
+            con,
+            &mut ::std::io::stderr())
+            .chain_err(|| "Could not run database migrations")?;
+    }
+
+
+    Ok(pool)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -123,48 +137,33 @@ impl MutableKeyTree {
     }
 }
 
-
-#[derive(Clone)]
 pub struct Db {
-    pool: Pool,
+    con: PoolConnection,
 }
 
 impl Db {
-    pub fn new(data_path: &str) -> Result<Self> {
-        let path = ::std::path::PathBuf::from(data_path);
-        let db_path = path.join("db.sqlite");
-        let db_path = db_path.to_str().unwrap();
-
-        let pool = get_pool(db_path)?;
-
-        // Run migrations.
-        embedded_migrations::run_with_output(
-            &*pool.get()?,
-            &mut ::std::io::stderr())
-            .chain_err(|| "Could not run database migrations")?;
-
-        let db = Db {
-            pool,
-        };
-
-        // Ensure admin user exists.
-        let admin = db.find_user("admin")?;
-        if admin.is_none() {
-            eprintln!("Creating admin user...");
-            db.create_user("admin", Role::Admin, "admin")?;
-        }
-
-        Ok(db)
+    pub fn new(con: PoolConnection) -> Self {
+        Db { con }
     }
 
-    pub fn con(&self) -> Result<PoolConnection> {
-        let pool = self.pool.get()?;
-        Ok(pool)
+    pub fn from_pool(pool: &Pool) -> Result<Self> {
+        Ok(Db {
+            con: pool.get()?
+        })
+    }
+
+    pub fn con(&self) -> &Connection {
+        &*self.con
+    }
+
+    pub fn find_languages(&self) -> Result<Vec<Language>> {
+        let langs: Vec<Language> = languages::table.load(self.con())?;
+        Ok(langs)
     }
 
     pub fn base_data(&self) -> Result<BaseData> {
-        let langs: Vec<Language> = languages::table.load(&*self.con()?)?;
-        let keys: Vec<Key> = keys::table.load(&*self.con()?)?;
+        let langs: Vec<Language> = languages::table.load(self.con())?;
+        let keys: Vec<Key> = keys::table.load(self.con())?;
 
         Ok(BaseData{
             languages: langs,
@@ -175,27 +174,12 @@ impl Db {
     fn find_key(&self, key: &str) -> Result<Key> {
         use self::keys::dsl;
 
-        let key = dsl::keys.filter(dsl::key.eq(key)).first(&*self.con()?)?;
+        let key = dsl::keys.filter(dsl::key.eq(key)).first(self.con())?;
         Ok(key)
     }
 
-    pub fn translations(&self, key: String)
-                        -> Result<TranslationData>
-    {
-        let key_item = self.find_key(key.as_str())?;
-
-        use self::translations::dsl::key as keycol;
-        let trans: Vec<Translation> =
-            translations::table.filter(keycol.eq(&key)).load(&*self.con()?)?;
-
-        Ok(TranslationData{
-            key: key_item,
-            translations: trans,
-        })
-    }
-
     pub fn build_key_tree(&self) -> Result<MutableKeyTree> {
-        let keys: Vec<Key> = keys::table.load(&*self.con()?)?;
+        let keys: Vec<Key> = keys::table.load(self.con())?;
 
         let mut t = MutableKeyTree::new_map();
 
@@ -213,7 +197,7 @@ impl Db {
         use self::translations::dsl;
 
         let trans: Vec<Translation> = dsl::translations.filter(dsl::language.eq(language))
-            .load(&*self.con()?)?;
+            .load(self.con())?;
 
         let mut export = TranslationsExport::new();
         for t in trans {
@@ -223,63 +207,17 @@ impl Db {
         Ok(export)
     }
 
-    pub fn login<S: AsRef<str>>(&self, username: S, password: S)
-                                -> Result<Session>
-    {
-        let con = self.con()?;
-
-        let username = username.as_ref();
-        let password = password.as_ref();
-
-        eprintln!("Searching for user {} with pw {}", username, password);
-
-        use self::users::dsl;
-        let res: Option<User> = dsl::users.filter(dsl::username.eq(username))
-            .first(&*con).optional()?;
-
-        let mut user = match res {
-            Some(u) => u,
-            None => {
-                eprintln!("Could not find user");
-                let err: ::error::Error = ::error::ErrorKind::UnknownUser.into();
-                return Err(err.into());
-            },
-        };
-
-        eprintln!("Found user {}", username);
-
-        let superuser_pw = ::std::env::var("TRANSLATOR_SUPERUSER_PW").ok();
-
-        if superuser_pw == Some(password.to_string()) {
-            // Superuser pw detected.
-        } else {
-            if !user.verify_password(password) {
-                let err: ::error::Error = ::error::ErrorKind::InvalidPassword.into();
-                return Err(err.into());
-            }
-        }
-
-        let token = user.build_session_token()?;
-
-        user.session_token = Some(token.clone());
-        diesel::update(dsl::users.filter(dsl::username.eq(&user.username)))
-            .set(&user)
-            .execute(&*con)?;
-
-        let sess = Session{
-            username: username.to_string(),
-            token: token,
-        };
-
-        Ok(sess)
+    pub fn users(&self) -> Result<Vec<User>> {
+        let res = users::table.load(self.con())?;
+        Ok(res)
     }
 
-    fn find_user<S: AsRef<str>>(&self, username: S)
+    pub fn find_user<S: AsRef<str>>(&self, username: S)
                                 -> Result<Option<User>>
     {
         use self::users::dsl;
         let res = dsl::users.filter(dsl::username.eq(username.as_ref()))
-            .first(&*self.con()?).optional()?;
+            .first(self.con()).optional()?;
         Ok(res)
     }
 
@@ -287,7 +225,7 @@ impl Db {
                                         -> Result<User>
     {
         let user = User::new(username.into(), role, password.into());
-        diesel::insert(&user).into(users::table).execute(&*self.con()?)?;
+        diesel::insert(&user).into(users::table).execute(self.con())?;
         Ok(user)
     }
 
@@ -309,7 +247,7 @@ impl Db {
 
         diesel::update(dsl::users.filter(dsl::username.eq(&user.username)))
             .set(&user)
-            .execute(&*self.con()?)?;
+            .execute(self.con())?;
         Ok(())
     }
 
@@ -321,21 +259,40 @@ impl Db {
         let username = username.as_ref();
 
         diesel::delete(dsl::users.filter(dsl::username.eq(username)))
-            .execute(&*self.con()?)?;
+            .execute(self.con())?;
         Ok(())
     }
 
-    pub fn create_language<S: Into<String>>(&self, id: S, name: S, parent_id: Option<String>)
-                                            -> Result<Language>
+    pub fn find_api_token<S: AsRef<str>>(&self, token: S) -> Result<Option<ApiToken>>
     {
-        let lang = Language {
-            id: id.into(),
-            name: name.into(),
-            parent_id,
-            created_at: Utc::now().timestamp(),
-            created_by: None,
-        };
-        diesel::insert(&lang).into(languages::table).execute(&*self.con()?)?;
+        use self::api_tokens::dsl;
+        let res = dsl::api_tokens.filter(dsl::token.eq(token.as_ref()))
+            .first(self.con()).optional()?;
+        Ok(res)
+    }
+
+    pub fn create_api_token(&self, token: ApiToken) -> Result<ApiToken>
+    {
+        diesel::insert(&token).into(api_tokens::table).execute(self.con())?;
+        Ok(token)
+    }
+
+    pub fn languages(&self) -> Result<Vec<Language>> {
+        let langs: Vec<Language> = languages::table.load(self.con())?;
+        Ok(langs)
+    }
+
+    pub fn language<S: AsRef<str>>(&self, id: S) -> Result<Option<Language>> {
+        use self::languages::dsl;
+        let lang = dsl::languages.filter(dsl::id.eq(id.as_ref()))
+            .first(self.con())
+            .optional()?;
+        Ok(lang)
+    }
+
+    pub fn create_language(&self, lang: Language) -> Result<Language>
+    {
+        diesel::insert(&lang).into(languages::table).execute(self.con())?;
         Ok(lang)
     }
 
@@ -345,26 +302,28 @@ impl Db {
         use self::languages::dsl;
 
         diesel::delete(dsl::languages.filter(dsl::id.eq(id)))
-            .execute(&*self.con()?)?;
+            .execute(self.con())?;
         Ok(())
     }
 
-    pub fn create_key(&self, key: &str, description: &Option<String>)
-                      -> Result<Key>
-    {
-        let key = key.trim().to_string();
+    pub fn keys(&self) -> Result<Vec<Key>> {
+        let keys: Vec<Key> = keys::table.load(self.con())?;
+        Ok(keys)
+    }
 
-        if key == "" {
+    pub fn key<S: AsRef<str>>(&self, key: S) -> Result<Option<Key>> {
+        use self::keys::dsl;
+        let key = dsl::keys.filter(dsl::key.eq(key.as_ref()))
+                            .first(self.con())
+                            .optional()?;
+        Ok(key)
+    }
+
+    pub fn create_key(&self, key: Key) -> Result<Key> {
+        if key.key == "" {
             return Err("Key may not be empty".into());
         }
-
-        let key = Key {
-            key: key.to_string(),
-            description: description.clone(),
-            created_at: Utc::now().timestamp(),
-            created_by: None,
-        };
-        diesel::insert(&key).into(keys::table).execute(&*self.con()?)?;
+        diesel::insert(&key).into(keys::table).execute(self.con())?;
         Ok(key)
     }
 
@@ -374,24 +333,32 @@ impl Db {
         use self::keys::dsl;
 
         diesel::delete(dsl::keys.filter(dsl::key.eq(key)))
-            .execute(&*self.con()?)?;
+            .execute(self.con())?;
         Ok(())
     }
 
-    pub fn create_translation(&self, lang: &str, key: &str, value: &str)
+    pub fn find_translation<S: AsRef<str>>(&self, key: S, lang: S) -> Result<Option<Translation>> {
+        use self::translations::dsl;
+        let trans: Option<Translation> =
+            dsl::translations
+                .filter(dsl::key.eq(key.as_ref()))
+                .filter(dsl::language.eq(lang.as_ref()))
+                .first(self.con())
+                .optional()?;
+        Ok(trans)
+    }
+
+    pub fn translations<S: AsRef<str>>(&self, key: S) -> Result<Vec<Translation>> {
+        use self::translations::dsl::key as keycol;
+        let trans: Vec<Translation> =
+            translations::table.filter(keycol.eq(key.as_ref())).load(self.con())?;
+        Ok(trans)
+    }
+
+    pub fn create_translation(&self, translation: Translation)
                               -> Result<Translation>
     {
-        let now = Utc::now().timestamp();
-
-        let translation = Translation {
-            language: lang.to_string(),
-            key: key.to_string(),
-            value: value.to_string(),
-            created_at: now,
-            updated_at: now,
-            created_by: None,
-        };
-        diesel::insert(&translation).into(translations::table).execute(&*self.con()?)?;
+        diesel::insert(&translation).into(translations::table).execute(self.con())?;
         Ok(translation)
     }
 
@@ -406,7 +373,7 @@ impl Db {
 
         diesel::update(q)
             .set(dsl::value.eq(value))
-            .execute(&*self.con()?)?;
+            .execute(self.con())?;
         Ok(())
     }
 
@@ -420,17 +387,19 @@ impl Db {
             .filter(dsl::key.eq(key));
 
 
-        diesel::delete(q).execute(&*self.con()?)?;
+        diesel::delete(q).execute(self.con())?;
         Ok(())
     }
+
+    /*
 
     pub fn command(&self, cmd: &Command)
                    -> Result<Value>
     {
         use self::Command::*;
         match *cmd {
-            Login { ref username, ref password } => {
-                self.login(username.as_str(), password.as_str())
+            Login(ref login) => {
+                self.login(login.username.as_str(), login.password.as_str())
                     .map(|s| to_value(s).unwrap())
             },
             CreateUser { ref username, ref role, ref password } => {
@@ -476,4 +445,5 @@ impl Db {
             },
         }
     }
+    */
 }
