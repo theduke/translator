@@ -1,9 +1,5 @@
 use std::time::Duration;
-use std::collections::BTreeMap;
-use std::cell::RefCell;
-use std::rc::Rc;
 
-use serde_json::value::{Value, to_value};
 use diesel;
 use diesel::prelude::*;
 use chrono::{Utc};
@@ -83,59 +79,8 @@ pub struct TranslationData {
     translations: Vec<Translation>,
 }
 
-pub type TranslationsExport = BTreeMap<String, String>;
 
-#[derive(Debug)]
-pub enum MutableKeyTree {
-    Map(Rc<RefCell<BTreeMap<String, MutableKeyTree>>>),
-    Key(String),
-}
 
-impl MutableKeyTree {
-    pub fn new_map() -> Self {
-        MutableKeyTree::Map(Rc::new(RefCell::new(BTreeMap::new())))
-    }
-
-    fn insert_nested(&mut self, key: String, mut parts: Vec<String>) {
-        let node = match *self {
-            MutableKeyTree::Key(_) => { panic!("Can't insert into a key"); },
-            MutableKeyTree::Map(ref m) => m,
-        };
-
-        // Invariant parts.len() > 0 must hold!
-        let name = parts.remove(0);
-
-        if parts.len() < 1 {
-            // Last part, so insert as key.
-            node.borrow_mut().insert(name.clone(), MutableKeyTree::Key(key));
-        } else {
-            let mut map = node.borrow_mut();
-            let nested = map.entry(name.clone()).or_insert(MutableKeyTree::new_map());
-            nested.insert_nested(key, parts);
-        }
-    }
-
-    pub fn insert(&mut self, key: String) {
-        let parts = key.split('.').map(|x| x.to_string()).collect();
-        self.insert_nested(key, parts);
-    }
-
-    pub fn to_json_value(self) -> Value {
-        match self {
-            MutableKeyTree::Key(s) => json!(s),
-            MutableKeyTree::Map(tree) => {
-                let tree = Rc::try_unwrap(tree).unwrap().into_inner();
-
-                let mut map = json!({});
-                for (key, val) in tree.into_iter() {
-                    map[key] = val.to_json_value();
-                }
-
-                map
-            },
-        }
-    }
-}
 
 pub struct Db {
     con: PoolConnection,
@@ -178,34 +123,8 @@ impl Db {
         Ok(key)
     }
 
-    pub fn build_key_tree(&self) -> Result<MutableKeyTree> {
-        let keys: Vec<Key> = keys::table.load(self.con())?;
 
-        let mut t = MutableKeyTree::new_map();
 
-        for key in keys {
-            t.insert(key.key);
-        }
-
-        Ok(t)
-    }
-
-    pub fn translations_export<S: AsRef<str>>(&self, language: S) -> Result<TranslationsExport> {
-        let language = language.as_ref();
-        // Load all translations for the specified language.
-
-        use self::translations::dsl;
-
-        let trans: Vec<Translation> = dsl::translations.filter(dsl::language.eq(language))
-            .load(self.con())?;
-
-        let mut export = TranslationsExport::new();
-        for t in trans {
-            export.insert(t.key, t.value);
-        }
-
-        Ok(export)
-    }
 
     pub fn users(&self) -> Result<Vec<User>> {
         let res = users::table.load(self.con())?;
@@ -352,6 +271,13 @@ impl Db {
         use self::translations::dsl::key as keycol;
         let trans: Vec<Translation> =
             translations::table.filter(keycol.eq(key.as_ref())).load(self.con())?;
+        Ok(trans)
+    }
+
+    pub fn translations_by_lang<S: AsRef<str>>(&self, lang: S) -> Result<Vec<Translation>> {
+        use self::translations::dsl;
+        let trans: Vec<Translation> =
+            dsl::translations.filter(dsl::language.eq(lang.as_ref())).load(self.con())?;
         Ok(trans)
     }
 

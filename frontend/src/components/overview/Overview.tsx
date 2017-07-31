@@ -128,9 +128,12 @@ class Overview extends React.Component<Props, State> {
                 <h4 className='card-title'>Export</h4>
 
                 <div>
-                  <button className='btn btn-secondary'>
+                  <a
+                    href='/export/translations/keys?format=json&pretty=true'
+                    target='_blank'
+                  >
                     Export keys
-                  </button>
+                  </a>
                 </div>
 
                 <div className='mt-3'>
@@ -142,7 +145,7 @@ class Overview extends React.Component<Props, State> {
                         return (
                             <a
                               key={l.id}
-                              href={`/export/translations/${l.id}`}
+                              href={`/export/translations/${l.id}?format=json&pretty=true`}
                               target='_blank'
                             >
                               <li className='list-group-item'>

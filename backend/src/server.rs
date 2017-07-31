@@ -14,6 +14,7 @@ use ::db::{Db, BaseData, TranslationData};
 use ::commands::{Ctx};
 use ::api::{self, Schema};
 use ::app::App;
+use ::repo::{ExportFormat};
 
 pub struct CORS;
 
@@ -76,68 +77,29 @@ fn assets_js() -> Content<&'static str> {
 struct ExportArgs {
     format: Option<String>,
     pretty: Option<bool>,
+    token: Option<String>,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-enum ExportFormat {
-    Json,
-    Javascript,
-}
-
-impl ExportFormat {
-    fn from_str(s: &str) -> Option<Self> {
-        match s.trim() {
-            "json" => Some(ExportFormat::Json),
-            "javascript" => Some(ExportFormat::Javascript),
-            _ => None,
-        }
-    }
-}
-
-/*
 #[get("/export/translations/<lang>?<args>")]
-fn export_translations(lang: String, args: ExportArgs, db: State<Db>) -> Result<Content<String>> {
-    let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
+fn export_translations(lang: String, args: ExportArgs, app: State<App>) -> Result<Content<String>> {
+    let format = args.format
+                     .and_then(|x| ExportFormat::from_str(&x))
+                     .unwrap_or(ExportFormat::Json);
     let pretty = args.pretty.unwrap_or(false);
 
-    let data = db.translations_export(lang)?;
-    let mut json = if pretty {
-        serde_json::to_string_pretty(&data)?
-    } else {
-        serde_json::to_string(&data)?
-    };
 
-    if format == ExportFormat::Javascript {
-        json = format!(
-            "// This file was auto-generated. Do not edit by hand!\n\n/* tslint:disable */\n\nexport const translations = {};\n\nexport default translations;\n",
-            json);
-    }
-
-    Ok(Content(ContentType::JSON, json))
+    let export = app.repo().translations_export(lang, format, pretty)?;
+    Ok(Content(ContentType::JSON, export))
 }
 
 #[get("/export/keys?<args>")]
-fn export_keys(args: ExportArgs, db: State<Db>) -> Result<Content<String>> {
+fn export_keys(args: ExportArgs, app: State<App>) -> Result<Content<String>> {
     let format = args.format.and_then(|x| ExportFormat::from_str(&x)).unwrap_or(ExportFormat::Json);
     let pretty = args.pretty.unwrap_or(false);
 
-    let tree = db.build_key_tree()?;
-    let data = tree.to_json_value();
-    let mut json = if pretty {
-        serde_json::to_string_pretty(&data)?
-    } else {
-        serde_json::to_string(&data)?
-    };
-
-    if format == ExportFormat::Javascript {
-        json = format!(
-            "// This file was auto-generated. Do not edit by hand!\n\n/* tslint:disable */\n\nexport const intlKeys = {};\n\nexport default intlKeys;\n",
-            json);
-    }
-
-    Ok(Content(ContentType::JSON, json))
+    let export = app.repo().keys_export(format, pretty)?;
+    Ok(Content(ContentType::JSON, export))
 }
-*/
 
 #[get("/api/graphiql")]
 fn graphiql() -> content::Html<String> {
@@ -231,12 +193,8 @@ pub fn run(app: ::app::App) {
         .manage(schema)
         .mount("/", routes![
             index,
-            // export_translations,
-            // export_keys,
-            // api_base_data,
-            // api_translations,
-            // api_command,
-            // api_command_options,
+            export_translations,
+            export_keys,
             assets_js,
             // Juniper graphql handlers.
             graphiql,
