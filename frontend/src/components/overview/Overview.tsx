@@ -129,7 +129,7 @@ class Overview extends React.Component<Props, State> {
 
                 <div>
                   <a
-                    href='/export/translations/keys?format=json&pretty=true'
+                    href='/export/keys?format=json&pretty=true'
                     target='_blank'
                   >
                     Export keys
