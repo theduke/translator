@@ -72,11 +72,21 @@ impl Config {
             Err(_) => "./data".to_string(),
         };
 
+        let admin_password = match var("TRANSLATOR_ADMIN_PASSWORD") {
+            Ok(p) => {
+                if p.trim() == "" {
+                    return Err("Invalid/empty env var: TRANSLATOR_ADMIN_PASSWORD".into());
+                }
+                Some(p)
+            },
+            Err(_) => None,
+        };
+
         Ok(Config {
             port,
             secret,
             public_api_url,
-            admin_password: None,
+            admin_password,
             data_path,
         })
     }
