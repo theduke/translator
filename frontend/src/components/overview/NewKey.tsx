@@ -112,12 +112,11 @@ class NewKey extends React.Component<RoutedProps, State> {
 
     // Check key validity.
     if (key !== '') {
-      const re = /^[a-zA-Z\d]+(\.[a-zA-Z\d]+)*$/;
-      if (re.exec(key) === null) {
-        if (key[key.length - 1] !== '.') {
-          error = 'Invalid key (only a-z / A-Z / 0-9 / . are allowed)';
-        } else {
-          error = 'Keys cannot end with a dot.'
+      const parts = key.split('.');
+      for (const part of parts) {
+        const re = /^[a-z]+([a-z\d_\-]*[a-z\d]+)?$/;
+        if (re.exec(part) === null) {
+          error = "Invalid key (must start with a letter, must end with letter or number, can only contain letters, numbers, '_' and '-'";
         }
       }
 
