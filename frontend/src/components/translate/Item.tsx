@@ -136,14 +136,19 @@ export default graphql(queries.translate, {
             query: queries.keyWithTranslations,
             variables: {key: translate.key},
           };
+          let changed = false;
           const data = store.readQuery(spec);
           data.key.translations = data.key.translations.map((t: Translation) => {
             if (t.language === translate.language) {
+              changed = true;
               return translate;
             } else {
               return t;
             }
           });
+          if (!changed) {
+            data.key.translations.push(translate);
+          }
           store.writeQuery({...spec, data});
 
         }
