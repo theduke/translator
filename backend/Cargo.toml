@@ -3,20 +3,21 @@ authors = ["theduke <chris@theduke.at>"]
 name = "translator"
 version = "0.1.0"
 [dependencies]
-dotenv = "0.10.1"
-error-chain = "0.10.0"
-juniper = {version = "0.8.1", git="https://github.com/stankec/juniper", features=["rocket-handlers"]}
-juniper_codegen = {version = "0.8.1", git="https://github.com/mhallin/juniper.git"}
-r2d2 = "0.7.3"
-r2d2-diesel = "0.14.0"
-ring-pwhash = "0.11.0"
-rocket = "0.3.0"
-rocket_codegen = "0.3.0"
-rocket_contrib = "0.3.0"
-serde = "1.0.10"
-serde_derive = "1.0.10"
+diesel_migrations = "1.0.0-beta1"
+dotenv = "= 0.10.1"
+error-chain = "= 0.11.0"
+juniper = "= 0.9.1"
+juniper_rocket = "*"
+r2d2 = "= 0.8.1"
+r2d2-diesel = "1.0.0-beta1"
+ring-pwhash = "= 0.11.0"
+rocket = "= 0.3.4"
+rocket_codegen = "= 0.3.4"
+rocket_contrib = "= 0.3.4"
+serde = "= 1.0.24"
+serde_derive = "= 1.0.24"
 serde_json = "1.0.2"
-simple_jwt = "1.1.0"
+simple_jwt = "= 1.2.1"
 
 [dependencies.chrono]
 features = ["serde"]
@@ -24,8 +25,4 @@ version = "0.4.0"
 
 [dependencies.diesel]
 features = ["sqlite"]
-version = "0.14.1"
-
-[dependencies.diesel_codegen]
-features = ["sqlite"]
-version = "0.14.0"
+version = "1.0.0-beta1"

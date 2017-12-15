@@ -1,4 +1,4 @@
-use juniper::{FieldResult, ResultExt};
+use juniper::{FieldResult};
 
 use ::db::schema::*;
 use super::Ctx;
@@ -95,9 +95,7 @@ graphql_object!(Key: Ctx |&self| {
 
     field translations(&executor) -> FieldResult<Vec<Translation>> {
         let ctx = executor.context();
-        let trans = ctx.repo()
-                       .translations(&self.key, ctx.user())
-                       .to_field_err()?;
+        let trans = ctx.repo().translations(&self.key, ctx.user())?;
         Ok(trans)
     }
 });
@@ -119,5 +117,3 @@ graphql_object!(ApiToken: Ctx |&self| {
         self.created_by.clone()
     }
 });
-
-

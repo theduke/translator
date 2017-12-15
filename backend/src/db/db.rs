@@ -36,16 +36,15 @@ pub fn build_pool(data_path: &str) -> Result<Pool> {
     let db_path = path.join("db.sqlite");
     let db_path = db_path.to_str().unwrap().to_string();
 
-    let config = r2d2::Config::builder()
-        .pool_size(1)
-        .max_lifetime(Some(Duration::new(0, 1)))
-        .idle_timeout(Some(Duration::new(0, 1)))
-        .connection_timeout(Duration::new(1, 0))
-        .connection_customizer(Box::new(ConnectionCustomizer))
-        .build();
     let manager = ConnectionManager::<Connection>::new(db_path);
 
-    let pool = r2d2::Pool::new(config, manager)
+    let pool = r2d2::Pool::builder()
+        .max_size(1)
+        .max_lifetime(Some(Duration::new(1, 0)))
+        .idle_timeout(Some(Duration::new(1, 0)))
+        .connection_timeout(Duration::new(1, 0))
+        .connection_customizer(Box::new(ConnectionCustomizer))
+        .build(manager)
         .chain_err(|| "Could not initialize database pool")?;
 
     {
@@ -144,7 +143,7 @@ impl Db {
                                         -> Result<User>
     {
         let user = User::new(username.into(), role, password.into());
-        diesel::insert(&user).into(users::table).execute(self.con())?;
+        diesel::insert_into(users::table).values(&user).execute(self.con())?;
         Ok(user)
     }
 
@@ -192,7 +191,7 @@ impl Db {
 
     pub fn create_api_token(&self, token: ApiToken) -> Result<ApiToken>
     {
-        diesel::insert(&token).into(api_tokens::table).execute(self.con())?;
+        diesel::insert_into(api_tokens::table).values(&token).execute(self.con())?;
         Ok(token)
     }
 
@@ -211,7 +210,7 @@ impl Db {
 
     pub fn create_language(&self, lang: Language) -> Result<Language>
     {
-        diesel::insert(&lang).into(languages::table).execute(self.con())?;
+        diesel::insert_into(languages::table).values(&lang).execute(self.con())?;
         Ok(lang)
     }
 
@@ -242,7 +241,7 @@ impl Db {
         if key.key == "" {
             return Err("Key may not be empty".into());
         }
-        diesel::insert(&key).into(keys::table).execute(self.con())?;
+        diesel::insert_into(keys::table).values(&key).execute(self.con())?;
         Ok(key)
     }
 
@@ -284,7 +283,7 @@ impl Db {
     pub fn create_translation(&self, translation: Translation)
                               -> Result<Translation>
     {
-        diesel::insert(&translation).into(translations::table).execute(self.con())?;
+        diesel::insert_into(translations::table).values(&translation).execute(self.con())?;
         Ok(translation)
     }
 

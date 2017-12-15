@@ -2,8 +2,8 @@
 error_chain!{
 
     foreign_links {
-        DbTimeout(::r2d2::GetTimeout);
-        Diesel(::diesel::result::Error);
+        DbPool(::r2d2::Error);
+        Db(::diesel::result::Error);
         Json(::serde_json::Error);
     }
 

@@ -10,14 +10,14 @@ extern crate serde;
 extern crate chrono;
 extern crate ring_pwhash;
 #[macro_use] extern crate diesel;
-#[macro_use] extern crate diesel_codegen;
+#[macro_use] extern crate diesel_migrations;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate rocket_contrib;
 extern crate rocket;
 extern crate simple_jwt;
 #[macro_use] extern crate juniper;
-#[macro_use] extern crate juniper_codegen;
+extern crate juniper_rocket;
 
 mod error;
 mod commands;

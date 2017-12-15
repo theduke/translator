@@ -7,7 +7,7 @@ use rocket_contrib::Json;
 use rocket::response::Content;
 use rocket::response::content;
 use serde_json::{self};
-use juniper::rocket_handlers;
+use juniper_rocket;
 
 use ::error::*;
 use ::db::{Db, BaseData, TranslationData};
@@ -103,7 +103,7 @@ fn export_keys(args: ExportArgs, app: State<App>) -> Result<Content<String>> {
 
 #[get("/api/graphiql")]
 fn graphiql() -> content::Html<String> {
-    rocket_handlers::graphiql_source("/api/graphql")
+    juniper_rocket::graphiql_source("/api/graphql")
 }
 
 
@@ -114,20 +114,20 @@ fn get_graphql_options() -> &'static str {
 
 #[get("/api/graphql?<request>")]
 fn get_graphql_handler(
-    request: rocket_handlers::GraphQLRequest,
+    request: juniper_rocket::GraphQLRequest,
     schema: State<Schema>,
     app: State<App>,
-) -> rocket_handlers::GraphQLResponse {
+) -> juniper_rocket::GraphQLResponse {
     let ctx = Ctx::new(app.clone(), None);
     request.execute(&schema, &ctx)
 }
 
 #[post("/api/graphql", data="<request>")]
 fn post_graphql_handler(
-    request: rocket_handlers::GraphQLRequest,
+    request: juniper_rocket::GraphQLRequest,
     schema: State<Schema>,
     app: State<App>,
-) -> rocket_handlers::GraphQLResponse {
+) -> juniper_rocket::GraphQLResponse {
     let ctx = Ctx::new(app.clone(), None);
     request.execute(&schema, &ctx)
 }
