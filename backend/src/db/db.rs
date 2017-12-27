@@ -40,9 +40,9 @@ pub fn build_pool(data_path: &str) -> Result<Pool> {
 
     let pool = r2d2::Pool::builder()
         .max_size(1)
-        .max_lifetime(Some(Duration::new(1, 0)))
-        .idle_timeout(Some(Duration::new(1, 0)))
-        .connection_timeout(Duration::new(1, 0))
+        .max_lifetime(Some(Duration::new(10, 0)))
+        .idle_timeout(Some(Duration::new(10, 0)))
+        .connection_timeout(Duration::new(5, 0))
         .connection_customizer(Box::new(ConnectionCustomizer))
         .build(manager)
         .chain_err(|| "Could not initialize database pool")?;
