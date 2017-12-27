@@ -1,4 +1,5 @@
 use juniper::{FieldResult as Res};
+use uuid::Uuid;
 
 use ::db::schema::*;
 use super::Ctx;
@@ -14,10 +15,10 @@ graphql_object!(Query: Ctx |&self| {
         Ok(langs)
     }
 
-    field language(&executor, id: String) -> Res<Option<Language>> {
+    field language(&executor, id: Uuid) -> Res<Option<Language>> {
+        let _id = id.to_string();
         let ctx = executor.context();
-        let lang = ctx.repo()
-                       .language(id, ctx.user())?;
+        let lang = ctx.repo().language(&_id, ctx.user())?;
         Ok(lang)
     }
 
@@ -38,14 +39,14 @@ graphql_object!(Query: Ctx |&self| {
     field key(&executor, key: String) -> Res<Option<Key>> {
         let ctx = executor.context();
         let key = ctx.repo()
-                       .key(key, ctx.user())?;
+                       .key_by_key(&key, ctx.user())?;
         Ok(key)
     }
 
     field translations(&executor, key: String) -> Res<Vec<Translation>> {
         let ctx = executor.context();
         let langs = ctx.repo()
-                       .translations(key, ctx.user())?;
+                       .translations(&key, ctx.user())?;
         Ok(langs)
     }
 

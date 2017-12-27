@@ -4,5 +4,5 @@ CREATE TABLE api_tokens(
   kind TEXT NOT NULL,
   created_at BIGINT NOT NULL,
   expires_at BIGINT,
-  created_by TEXT references users(username) ON DELETE CASCADE
+  created_by TEXT references users(id) ON DELETE CASCADE
 );

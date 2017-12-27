@@ -2,6 +2,7 @@
 table!(
   languages {
     id -> Text,
+    code -> Text,
     name -> Text,
     parent_id -> Nullable<Text>,
     created_at -> BigInt,
@@ -14,6 +15,7 @@ Serialize, Deserialize, Debug, Clone)]
 #[table_name="languages"]
 pub struct Language {
     pub id: String,
+    pub code: String,
     pub name: String,
     pub parent_id: Option<String>,
     pub created_at: i64,
@@ -22,7 +24,7 @@ pub struct Language {
 
 #[derive(GraphQLInputObject, Debug, Clone)]
 pub struct NewLanguage {
-    pub id: String,
+    pub code: String,
     pub name: String,
     pub parent_id: Option<String>,
 }

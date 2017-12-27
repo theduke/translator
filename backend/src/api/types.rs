@@ -8,6 +8,10 @@ graphql_object!(Language: Ctx |&self| {
         self.id.clone()
     }
 
+    field code() -> &str {
+        &self.code
+    }
+
     field name() -> String {
         self.name.clone()
     }
@@ -26,12 +30,21 @@ graphql_object!(Language: Ctx |&self| {
 });
 
 graphql_object!(Translation: Ctx |&self| {
-    field language() -> String {
-        self.language.clone()
+
+    field id() -> String {
+        self.id.clone()
     }
 
-    field key() -> String {
-        self.key.clone()
+    field language_id() -> String {
+        self.language_id.clone()
+    }
+
+    field key_id() -> String {
+        self.key_id.clone()
+    }
+
+    field version() -> i32 {
+        self.version as i32
     }
 
     field value() -> String {
@@ -53,6 +66,11 @@ graphql_object!(Translation: Ctx |&self| {
 });
 
 graphql_object!(User: Ctx |&self| {
+
+    field id() -> String {
+        self.id.clone()
+    }
+
     field username() -> String {
         self.username.clone()
     }
@@ -68,15 +86,14 @@ graphql_object!(User: Ctx |&self| {
     field created_at() -> f64 {
         self.created_at as f64
     }
-
-    field session_token() -> Option<String> {
-        self.session_token.clone()
-    }
-
-
 });
 
 graphql_object!(Key: Ctx |&self| {
+
+    field id() -> String {
+        self.id.clone()
+    }
+
     field key() -> String {
         self.key.clone()
     }
@@ -95,7 +112,7 @@ graphql_object!(Key: Ctx |&self| {
 
     field translations(&executor) -> FieldResult<Vec<Translation>> {
         let ctx = executor.context();
-        let trans = ctx.repo().translations(&self.key, ctx.user())?;
+        let trans = ctx.repo().translations(&self.id, ctx.user())?;
         Ok(trans)
     }
 });

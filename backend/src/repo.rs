@@ -5,6 +5,7 @@ use std::rc::Rc;
 use chrono::{Utc};
 use serde_json;
 use serde_json::value::{Value, to_value};
+use uuid::Uuid;
 
 use ::commands::{Ctx};
 use ::error::*;
@@ -105,10 +106,10 @@ impl Repo {
     pub fn ensure_admin_user(&mut self) -> Result<()> {
         let db = self.db()?;
         // Ensure admin user exists.
-        let admin = db.find_user("admin")?;
+        let admin = db.user_by_username("admin")?;
         if admin.is_none() {
             eprintln!("Creating admin user...");
-            db.create_user("admin", Role::Admin, "admin")?;
+            db.create_user("admin".to_string(), Role::Admin, "admin".to_string())?;
         }
         Ok(())
     }
@@ -120,7 +121,7 @@ impl Repo {
         let username = username.as_ref();
         let password = password.as_ref();
 
-        let mut user = match db.find_user(username)? {
+        let user = match db.user_by_username(username)? {
             Some(u) => u,
             None => {
                 return Err(ErrorKind::UnknownUser.into());
@@ -140,15 +141,15 @@ impl Repo {
     }
 
 
-    pub fn translations_export(&mut self, lang: String, format: ExportFormat, pretty: bool)
+    pub fn translations_export(&mut self, lang_id: String, format: ExportFormat, pretty: bool)
         -> Result<String>
     {
         // Load all translations for the specified language.
-        let translations = self.db()?.translations_by_lang(&lang)?;
+        let translations = self.db()?.translations_with_keys(&lang_id)?;
 
         let mut export = TranslationsExport::new();
-        for t in translations {
-            export.insert(t.key, t.value);
+        for (t, k) in translations {
+            export.insert(k.key, t.value);
         }
 
         let mut json = if pretty {
@@ -197,18 +198,17 @@ impl Repo {
         self.db()?.languages()
     }
 
-    pub fn language<S: AsRef<str>>(&mut self, id: S, user: Option<&User>)
-        -> Result<Option<Language>>
-    {
-        self.db()?.language(id)
+    pub fn language(&mut self, id: &str, user: Option<&User>) -> Result<Option<Language>> {
+        self.db()?.language_by_id(id)
     }
 
     pub fn create_language(&mut self, lang: NewLanguage, user: Option<&User>) -> Result<Language> {
         let lang = Language {
-            id: lang.id,
+            id: Uuid::new_v4().to_string(),
+            code: lang.code,
             name: lang.name,
             parent_id: lang.parent_id,
-            created_by: user.map(|u| u.username.clone()),
+            created_by: user.map(|u| u.id.clone()),
             created_at: Utc::now().timestamp(),
         };
         eprintln!("Creating lang: {:?}", lang);
@@ -224,14 +224,17 @@ impl Repo {
         self.db()?.keys()
     }
 
-    pub fn key<S: AsRef<str>>(&mut self, id: S, user: Option<&User>)
-        -> Result<Option<Key>>
-    {
-        self.db()?.key(id)
+    pub fn key_by_id(&mut self, id: &str, user: Option<&User>) -> Result<Option<Key>> {
+        self.db()?.key_by_id(id)
+    }
+
+    pub fn key_by_key(&mut self, key: &str, user: Option<&User>) -> Result<Option<Key>> {
+        self.db()?.key_by_key(key)
     }
 
     pub fn create_key(&mut self, key: NewKey, user: Option<&User>) -> Result<Key> {
         let key = Key{
+            id: Uuid::new_v4().to_string(),
             key: key.key,
             description: key.description,
             created_at: Utc::now().timestamp(),
@@ -245,63 +248,55 @@ impl Repo {
         Ok(())
     }
 
-    pub fn translations<S: AsRef<str>>(&mut self, key: S, user: Option<&User>)
+    pub fn translations(&mut self, key_id: &str, user: Option<&User>)
         -> Result<Vec<Translation>>
     {
-        self.db()?.translations(key)
+        self.db()?.translations(key_id)
     }
 
     pub fn translate(&mut self, translation: NewTranslation, user: Option<&User>)
         -> Result<Translation>
     {
         // Try to find old translation.
-        let t = self.db()?.find_translation(&translation.key, &translation.language)?;
-
+        let key_id = translation.key_id.to_string();
+        let language_id = translation.language_id.to_string();
+        let t = self.db()?.find_translation(&key_id, &language_id)?;
 
         if let Some(mut t) = t {
-            self.db()?.update_translation(
-                translation.language.as_ref(),
-                translation.key.as_ref(),
-                translation.value.as_ref())?;
+            self.db()?.update_translation(&t.id, &translation.value)?;
             t.value = translation.value;
+            t.version += 1;
             Ok(t)
         } else {
-            let now = Utc::now().timestamp();
-            let translation = Translation {
-                language: translation.language,
-                key: translation.key,
-                value: translation.value,
-                created_at: now,
-                updated_at: now,
-                created_by: user.map(|u| u.username.clone()),
-            };
-            self.db()?.create_translation(translation)
+            self.create_translation(translation, user.map(|u| u.id.clone()))
         }
+    }
+
+    pub fn create_translation(&mut self, translation: NewTranslation, user_id: Option<String>)
+        -> Result<Translation>
+    {
+        let now = Utc::now().timestamp();
+        let translation = Translation {
+            id: Uuid::new_v4().to_string(),
+            language_id: translation.language_id.to_string(),
+            key_id: translation.key_id.to_string(),
+            value: translation.value,
+            created_at: now,
+            updated_at: now,
+            created_by: user_id,
+            version: 1,
+        };
+        self.db()?.create_translation(translation)
     }
 
     pub fn update_translation(&mut self, translation: NewTranslation, user: Option<&User>)
         -> Result<Translation>
     {
-        let now = Utc::now().timestamp();
-
-
-
-        let now = Utc::now().timestamp();
-        let translation = Translation {
-            language: translation.language,
-            key: translation.key,
-            value: translation.value,
-            created_at: now,
-            updated_at: now,
-            created_by: None,
-        };
-        Ok(translation)
+        unimplemented!();
     }
 
-    pub fn delete_translation<S: AsRef<str>>(&mut self, language: S, key: S, user: Option<&User>)
-        -> Result<()>
-    {
-        self.db()?.delete_translation(language.as_ref(), key.as_ref())?;
+    pub fn delete_translation(&mut self, id: &str, user: Option<&User>) -> Result<()> {
+        self.db()?.delete_translation(id)?;
         Ok(())
     }
 

@@ -5,11 +5,11 @@ use super::{ApiToken, TokenKind};
 
 table!(
   users(username) {
+    id -> Text,
     username -> Text,
     role -> Text,
     password_hash -> Text,
     created_at -> BigInt,
-    session_token -> Nullable<Text>,
   }
 );
 
@@ -43,11 +43,11 @@ impl Role {
          Serialize, Deserialize, Debug, Clone)]
 #[table_name="users"]
 pub struct User {
+    pub id: String,
     pub username: String,
     pub role: String,
     pub password_hash: String,
     pub created_at: i64,
-    pub session_token: Option<String>,
 }
 
 impl User {
@@ -63,11 +63,11 @@ impl User {
 
     pub fn new(username: String, role: Role, password: String) -> Self {
         User {
+            id: ::uuid::Uuid::new_v4().to_string(),
             username,
             role: role.to_str().into(),
             password_hash: Self::hash_password(password),
             created_at: Utc::now().timestamp(),
-            session_token: None,
         }
     }
 
@@ -92,7 +92,7 @@ impl User {
             kind: TokenKind::Session.to_str().to_string(),
             created_at: Utc::now().timestamp(),
             expires_at: None,
-            created_by: Some(self.username.clone()),
+            created_by: Some(self.id.clone()),
         })
     }
 }

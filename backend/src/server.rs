@@ -108,8 +108,6 @@ fn export_all(app: State<App>) -> Result<Json<db::Export>> {
     Ok(Json(export))
 }
 
-
-
 #[get("/api/graphiql")]
 fn graphiql() -> content::Html<String> {
     juniper_rocket::graphiql_source("/api/graphql")

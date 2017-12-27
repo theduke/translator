@@ -1,4 +1,5 @@
 use juniper::{FieldResult as Res};
+use uuid::Uuid;
 
 pub use super::{Ctx};
 use ::db::schema::*;
@@ -56,10 +57,10 @@ graphql_object!(Mutation: Ctx |&self| {
         Ok(translation)
     }
 
-    field delete_translation(&executor, language: String, key: String) -> Res<bool> {
+    field delete_translation(&executor, id: Uuid) -> Res<bool> {
+        let _id: String = id.to_string();
         let ctx = executor.context();
-            ctx.repo()
-               .delete_translation(language, key, ctx.user())?;
+        ctx.repo().delete_translation(&_id, ctx.user())?;
         Ok(true)
     }
 

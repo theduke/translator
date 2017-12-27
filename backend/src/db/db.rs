@@ -107,7 +107,7 @@ impl Db {
         &*self.con
     }
 
-    pub fn find_languages(&self) -> Result<Vec<Language>> {
+    pub fn languages(&self) -> Result<Vec<Language>> {
         let langs: Vec<Language> = languages::table.load(self.con())?;
         Ok(langs)
     }
@@ -122,44 +122,35 @@ impl Db {
         })
     }
 
-    fn find_key(&self, key: &str) -> Result<Key> {
-        use self::keys::dsl;
-
-        let key = dsl::keys.filter(dsl::key.eq(key)).first(self.con())?;
-        Ok(key)
-    }
-
-
-
-
     pub fn users(&self) -> Result<Vec<User>> {
         let res = users::table.load(self.con())?;
         Ok(res)
     }
 
-    pub fn find_user<S: AsRef<str>>(&self, username: S)
-                                -> Result<Option<User>>
-    {
+    pub fn user_by_username(&self, username: &str) -> Result<Option<User>> {
         use self::users::dsl;
-        let res = dsl::users.filter(dsl::username.eq(username.as_ref()))
+        let res = dsl::users.filter(dsl::username.eq(username))
             .first(self.con()).optional()?;
         Ok(res)
     }
 
-    pub fn create_user<S: Into<String>>(&self, username: S, role: Role, password: S)
-                                        -> Result<User>
-    {
-        let user = User::new(username.into(), role, password.into());
+    pub fn user_by_id(&self, id: &str) -> Result<Option<User>> {
+        use self::users::dsl;
+        let res = dsl::users.filter(dsl::id.eq(id))
+            .first(self.con()).optional()?;
+        Ok(res)
+    }
+
+    pub fn create_user(&self, username: String, role: Role, password: String) -> Result<User> {
+        let user = User::new(username, role, password);
         diesel::insert_into(users::table).values(&user).execute(self.con())?;
         Ok(user)
     }
 
-    pub fn update_user<S: AsRef<str>>(&self, username: S, password: S)
-                                      -> Result<()>
-    {
+    pub fn update_user(&self, username: &str, password: &str) -> Result<()> {
         use self::users::dsl;
 
-        let res = self.find_user(username)?;
+        let res = self.user_by_username(username)?;
         let mut user = match res {
             Some(u) => u,
             None => {
@@ -176,22 +167,19 @@ impl Db {
         Ok(())
     }
 
-    pub fn delete_user<S: AsRef<str>>(&self, username: S)
-                                      -> Result<()>
+    pub fn delete_user(&self, id: &str) -> Result<()>
     {
         use self::users::dsl;
 
-        let username = username.as_ref();
-
-        diesel::delete(dsl::users.filter(dsl::username.eq(username)))
+        diesel::delete(dsl::users.filter(dsl::id.eq(id)))
             .execute(self.con())?;
         Ok(())
     }
 
-    pub fn find_api_token<S: AsRef<str>>(&self, token: S) -> Result<Option<ApiToken>>
+    pub fn api_token(&self, token: &str) -> Result<Option<ApiToken>>
     {
         use self::api_tokens::dsl;
-        let res = dsl::api_tokens.filter(dsl::token.eq(token.as_ref()))
+        let res = dsl::api_tokens.filter(dsl::token.eq(token))
             .first(self.con()).optional()?;
         Ok(res)
     }
@@ -202,14 +190,9 @@ impl Db {
         Ok(token)
     }
 
-    pub fn languages(&self) -> Result<Vec<Language>> {
-        let langs: Vec<Language> = languages::table.load(self.con())?;
-        Ok(langs)
-    }
-
-    pub fn language<S: AsRef<str>>(&self, id: S) -> Result<Option<Language>> {
+    pub fn language_by_id(&self, id: &str) -> Result<Option<Language>> {
         use self::languages::dsl;
-        let lang = dsl::languages.filter(dsl::id.eq(id.as_ref()))
+        let lang = dsl::languages.filter(dsl::id.eq(id))
             .first(self.con())
             .optional()?;
         Ok(lang)
@@ -221,9 +204,7 @@ impl Db {
         Ok(lang)
     }
 
-    pub fn delete_language(&self, id: &str)
-                           -> Result<()>
-    {
+    pub fn delete_language(&self, id: &str) -> Result<()> {
         use self::languages::dsl;
 
         diesel::delete(dsl::languages.filter(dsl::id.eq(id)))
@@ -236,9 +217,17 @@ impl Db {
         Ok(keys)
     }
 
-    pub fn key<S: AsRef<str>>(&self, key: S) -> Result<Option<Key>> {
+    pub fn key_by_key(&self, key: &str) -> Result<Option<Key>> {
         use self::keys::dsl;
-        let key = dsl::keys.filter(dsl::key.eq(key.as_ref()))
+        let key = dsl::keys.filter(dsl::key.eq(key))
+            .first(self.con())
+            .optional()?;
+        Ok(key)
+    }
+
+    pub fn key_by_id(&self, id: &str) -> Result<Option<Key>> {
+        use self::keys::dsl;
+        let key = dsl::keys.filter(dsl::id.eq(id))
                             .first(self.con())
                             .optional()?;
         Ok(key)
@@ -252,31 +241,29 @@ impl Db {
         Ok(key)
     }
 
-    pub fn delete_key(&self, key: &str)
-                      -> Result<()>
-    {
+    pub fn delete_key(&self, id: &str) -> Result<()> {
         use self::keys::dsl;
 
-        diesel::delete(dsl::keys.filter(dsl::key.eq(key)))
+        diesel::delete(dsl::keys.filter(dsl::id.eq(id)))
             .execute(self.con())?;
         Ok(())
     }
 
-    pub fn find_translation<S: AsRef<str>>(&self, key: S, lang: S) -> Result<Option<Translation>> {
+    pub fn find_translation(&self, key_id: &str, lang_id: &str) -> Result<Option<Translation>> {
         use self::translations::dsl;
         let trans: Option<Translation> =
             dsl::translations
-                .filter(dsl::key.eq(key.as_ref()))
-                .filter(dsl::language.eq(lang.as_ref()))
+                .filter(dsl::key_id.eq(key_id))
+                .filter(dsl::language_id.eq(lang_id))
                 .first(self.con())
                 .optional()?;
         Ok(trans)
     }
 
-    pub fn translations<S: AsRef<str>>(&self, key: S) -> Result<Vec<Translation>> {
-        use self::translations::dsl::key as keycol;
+    pub fn translations(&self, key_id: &str) -> Result<Vec<Translation>> {
+        use self::translations::dsl::key_id as keycol;
         let trans: Vec<Translation> =
-            translations::table.filter(keycol.eq(key.as_ref())).load(self.con())?;
+            translations::table.filter(keycol.eq(key_id)).load(self.con())?;
         Ok(trans)
     }
 
@@ -285,28 +272,33 @@ impl Db {
         Ok(trans)
     }
 
-    pub fn translations_by_lang<S: AsRef<str>>(&self, lang: S) -> Result<Vec<Translation>> {
+    pub fn translations_by_lang<S: AsRef<str>>(&self, lang_id: &str) -> Result<Vec<Translation>> {
         use self::translations::dsl;
         let trans: Vec<Translation> =
-            dsl::translations.filter(dsl::language.eq(lang.as_ref())).load(self.con())?;
+            dsl::translations.filter(dsl::language_id.eq(lang_id)).load(self.con())?;
         Ok(trans)
     }
 
-    pub fn create_translation(&self, translation: Translation)
-                              -> Result<Translation>
-    {
+    pub fn translations_with_keys(&self, lang_id: &str) -> Result<Vec<(Translation, Key)>> {
+         use self::translations::dsl;
+        let trans: Vec<(Translation, Key)> =
+            dsl::translations
+                .filter(dsl::language_id.eq(lang_id))
+                .inner_join(keys::table)
+                .load(self.con())?;
+        Ok(trans)
+    }
+
+    pub fn create_translation(&self, translation: Translation) -> Result<Translation> {
         diesel::insert_into(translations::table).values(&translation).execute(self.con())?;
         Ok(translation)
     }
 
-    pub fn update_translation(&self, lang: &str, key: &str, value: &str)
-                              -> Result<()>
-    {
+    pub fn update_translation(&self, id: &str, value: &str) -> Result<()> {
         use self::translations::dsl;
 
         let q = dsl::translations
-            .filter(dsl::language.eq(lang))
-            .filter(dsl::key.eq(key));
+            .filter(dsl::id.eq(id));
 
         diesel::update(q)
             .set(dsl::value.eq(value))
@@ -314,16 +306,9 @@ impl Db {
         Ok(())
     }
 
-    pub fn delete_translation(&self, lang: &str, key: &str)
-                              -> Result<()>
-    {
+    pub fn delete_translation(&self, id: &str) -> Result<()> {
         use self::translations::dsl;
-
-        let q = dsl::translations
-            .filter(dsl::language.eq(lang))
-            .filter(dsl::key.eq(key));
-
-
+        let q = dsl::translations .filter(dsl::id.eq(id));
         diesel::delete(q).execute(self.con())?;
         Ok(())
     }
@@ -331,7 +316,7 @@ impl Db {
     pub fn export(&self) -> Result<Export> {
         let exp = Export{
             version: 0,
-            languages: self.find_languages()?,
+            languages: self.languages()?,
             keys: self.keys()?,
             translations: self.all_translations()?,
             users: self.users()?,
