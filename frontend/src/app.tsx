@@ -9,7 +9,7 @@ import {ApiToken} from 'translator/types';
 
 function launch() {
   const iface = createNetworkInterface({
-      uri: 'http://localhost:8080/api/graphql',
+      uri: window.location.origin + '/api/graphql',
   });
   iface.use([{
     applyMiddleware(req, next) {
