@@ -103,7 +103,13 @@ const config = {
       index: '/assets/index.html',
     },
     hot: true,
-  },
 
+    proxy: {
+      '/api/**': {
+        target: 'http://localhost:8080',
+        secure: false
+      }
+    }
+  },
 };
 module.exports = config;
