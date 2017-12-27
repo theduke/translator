@@ -157,6 +157,10 @@ class Overview extends React.Component<Props, State> {
                     }
                   </ul>
                 </div>
+
+                <div className="mt-3">
+                  <a href='/export/all'>Complete Data Export</a>
+                </div>
               </div>
             </div>
           </div>

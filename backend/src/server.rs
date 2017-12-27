@@ -10,7 +10,7 @@ use serde_json::{self};
 use juniper_rocket;
 
 use ::error::*;
-use ::db::{Db, BaseData, TranslationData};
+use ::db::{self, Db, BaseData, TranslationData};
 use ::commands::{Ctx};
 use ::api::{self, Schema};
 use ::app::App;
@@ -100,6 +100,15 @@ fn export_keys(args: ExportArgs, app: State<App>) -> Result<Content<String>> {
     let export = app.repo().keys_export(format, pretty)?;
     Ok(Content(ContentType::JSON, export))
 }
+
+
+#[get("/export/all")]
+fn export_all(app: State<App>) -> Result<Json<db::Export>> {
+    let export = app.repo().export()?;
+    Ok(Json(export))
+}
+
+
 
 #[get("/api/graphiql")]
 fn graphiql() -> content::Html<String> {
@@ -195,6 +204,7 @@ pub fn run(app: ::app::App) {
             index,
             export_translations,
             export_keys,
+            export_all,
             assets_js,
             // Juniper graphql handlers.
             graphiql,

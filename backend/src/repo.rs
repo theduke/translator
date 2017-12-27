@@ -8,7 +8,7 @@ use serde_json::value::{Value, to_value};
 
 use ::commands::{Ctx};
 use ::error::*;
-use ::db::{Db, Connection};
+use ::db::{self, Db, Connection};
 use ::app::App;
 use ::db::schema::*;
 
@@ -308,5 +308,9 @@ impl Repo {
 
     pub fn users(&mut self, user: Option<&User>) -> Result<Vec<User>> {
         self.db()?.users()
+    }
+
+    pub fn export(&mut self) -> Result<db::Export> {
+        self.db()?.export()
     }
 }

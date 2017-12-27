@@ -78,7 +78,14 @@ pub struct TranslationData {
     translations: Vec<Translation>,
 }
 
-
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Export {
+    pub version: u64,
+    pub languages: Vec<Language>,
+    pub keys: Vec<Key>,
+    pub translations: Vec<Translation>,
+    pub users: Vec<User>,
+}
 
 
 pub struct Db {
@@ -273,6 +280,11 @@ impl Db {
         Ok(trans)
     }
 
+    pub fn all_translations(&self) -> Result<Vec<Translation>> {
+        let trans = translations::table.load(self.con())?;
+        Ok(trans)
+    }
+
     pub fn translations_by_lang<S: AsRef<str>>(&self, lang: S) -> Result<Vec<Translation>> {
         use self::translations::dsl;
         let trans: Vec<Translation> =
@@ -314,6 +326,17 @@ impl Db {
 
         diesel::delete(q).execute(self.con())?;
         Ok(())
+    }
+
+    pub fn export(&self) -> Result<Export> {
+        let exp = Export{
+            version: 0,
+            languages: self.find_languages()?,
+            keys: self.keys()?,
+            translations: self.all_translations()?,
+            users: self.users()?,
+        };
+        Ok(exp)
     }
 
     /*
