@@ -4,10 +4,12 @@ import {bind} from 'decko';
 
 import {NewTranslation, Translation} from 'translator/types'
 import * as queries from 'translator/queries';
+import * as types from 'translator/types';
 
 interface Props {
+  keyId: string;
   keyName: string;
-  lang: string;
+  lang: types.Language;
   translation?: Translation | null;
   save: (trans: NewTranslation) => Promise<any>;
 }
@@ -56,7 +58,7 @@ class Item extends React.Component<Props, State> {
           <div className='col-3'>
             <div>
               <h4>
-                {lang}
+                {lang.code}
               </h4>
             </div>
           </div>
@@ -104,8 +106,8 @@ class Item extends React.Component<Props, State> {
     const value = this.state.value;
 
     const data = {
-      key: this.props.keyName,
-      language: this.props.lang,
+      keyId: this.props.keyId,
+      languageId: this.props.lang.id,
       value,
     };
 
@@ -127,19 +129,19 @@ class Item extends React.Component<Props, State> {
 }
 
 export default graphql(queries.translate, {
-  props: ({mutate}: any) => ({
-    save: (translation: NewTranslation) => {
-      return (mutate as any)({
-        variables: {translation},
+    props: ({mutate}: any) => ({
+        save: (translation: types.NewTranslation) => mutate({variables: {translation}}),
+    }),
+    options: (props: any) => ({
         update: (store: any, {data: {translate}}: any) => {
           const spec = {
             query: queries.keyWithTranslations,
-            variables: {key: translate.key},
+            variables: {key: props.keyName},
           };
           let changed = false;
           const data = store.readQuery(spec);
           data.key.translations = data.key.translations.map((t: Translation) => {
-            if (t.language === translate.language) {
+            if (t.languageId === translate.languageId) {
               changed = true;
               return translate;
             } else {
@@ -150,9 +152,6 @@ export default graphql(queries.translate, {
             data.key.translations.push(translate);
           }
           store.writeQuery({...spec, data});
-
         }
-      });
-    },
-  }),
+    }),
 })(Item) as any;

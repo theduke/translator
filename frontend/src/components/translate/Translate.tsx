@@ -18,6 +18,7 @@ interface Props {
     languages: Language[];
     key: {
       key: string;
+      id: string;
       description: string;
       translations: Translation[];
     }
@@ -74,9 +75,10 @@ class Translate extends React.Component<RoutedProps, State> {
         return (
           <Item
             key={l.id}
-            lang={l.id}
+            lang={l}
             keyName={this.props.keyName}
-            translation={translations.find(t => t.language === l.id)}
+            keyId={this.props.data.key.id}
+            translation={translations.find(t => t.languageId === l.id)}
           />
         );
       }) : (
@@ -174,7 +176,7 @@ export default compose(
     props: ({mutate, ownProps}) => ({
       deleteKey: () => {
         return (mutate as any)({
-          variables: { key: (ownProps as any).keyName},
+          variables: { key: (ownProps as any).data.key.id},
 
           refetchQueries: [{query: queries.keys}],
 

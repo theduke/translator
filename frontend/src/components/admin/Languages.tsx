@@ -21,12 +21,12 @@ interface Props {
 interface State {
   deleteLoading: boolean;
   deleteError: {} | null;
-  confirmDeleteLanguage: string | null;
+  confirmDeleteLanguage: types.Language | null;
 }
 
 class Languages extends React.Component<Props, State> {
 
-  public state = {
+  public state: State = {
     deleteLoading: false,
     deleteError: null,
     confirmDeleteLanguage: null,
@@ -41,6 +41,7 @@ class Languages extends React.Component<Props, State> {
 
     const langs = languages || [];
 
+    console.log(langs);
     return (
       <div>
         <h1 className='text-center mb-3'>Languages</h1>
@@ -50,24 +51,24 @@ class Languages extends React.Component<Props, State> {
         }
 
         {
-          confirmDeleteLanguage ? (
+          confirmDeleteLanguage !== null ? (
             <div className="alert alert-danger">
               <p>
                 Deleting a language will delete <b>ALL TRANSLATIONS</b> that have
                 been created for it.
               </p>
 
-              <p>It will also delete all <b>child languages</b>.</p>
+              <p>Child languages will be orphaned.</p>
 
               <p>
-                <b>Are you sure you want to delete "{confirmDeleteLanguage}"?</b>
+                <b>Are you sure you want to delete "{confirmDeleteLanguage.code}"?</b>
               </p>
 
               <button
                 className="btn btn-lg btn-danger mr-3"
-                onClick={() => this.deleteLanguage(confirmDeleteLanguage as any)}
+                onClick={() => this.deleteLanguage(confirmDeleteLanguage)}
               >
-                Yes, delete "{confirmDeleteLanguage}"
+                Yes, delete "{confirmDeleteLanguage.code}"
               </button>
 
               <button className="btn btn-secondary"
@@ -106,10 +107,13 @@ class Languages extends React.Component<Props, State> {
   }
 
   @bind
-  private deleteLanguage(id: string) {
+  private deleteLanguage(lang: types.Language) {
     const cur = this.state.confirmDeleteLanguage;
-    if (cur !== id) {
-      this.setState({confirmDeleteLanguage: id});
+    if (cur && cur.id === lang.id) {
+
+    }
+    if (!cur || cur.id !== lang.id) {
+      this.setState({confirmDeleteLanguage: lang});
       return;
     }
 
@@ -119,7 +123,7 @@ class Languages extends React.Component<Props, State> {
       confirmDeleteLanguage: null,
     });
 
-    this.props.deleteLanguage(id)
+    this.props.deleteLanguage(lang.id)
       .then(() => {
         this.setState({
           deleteLoading: false,
@@ -132,9 +136,6 @@ class Languages extends React.Component<Props, State> {
       });
   }
 }
-
-
-
 
 export const deleteQuery = gql`
 mutation DeleteLanguage($id: String!) {

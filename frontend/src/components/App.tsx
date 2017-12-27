@@ -51,8 +51,8 @@ class App extends React.Component<Props, State> {
           <Route path='/admin' exact render={() => <Admin /> } />
           <Route path='/languages' render={() => <Languages />} />
           <Route
-            path='/translate/:id'
-            render={ ({match}: any) => ( <Translate keyName={match.params.id} /> ) } />
+            path='/translate/:key'
+            render={ ({match}: any) => ( <Translate keyName={match.params.key} /> ) } />
         </div>
       );
 

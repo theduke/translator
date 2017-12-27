@@ -15,22 +15,24 @@ export interface Language {
   createdAt: number;
   createdBy: string | null;
   id: string;
+  code: string;
   name: string;
   parentId: string | null;
 }
 
 export interface Translation {
+  id: string;
   created_at: number;
   updated_at: number;
   created_by: string | null;
-  key: string;
-  language: string;
+  keyId: string;
+  languageId: string;
   value: string;
 }
 
 export interface NewTranslation {
-  language: string;
-  key: string;
+  languageId: string;
+  keyId: string;
   value: string;
 }
 

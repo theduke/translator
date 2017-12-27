@@ -31,11 +31,11 @@ function launch() {
       console.log(o);
       switch (o.__typename) {
         case 'Key':
-          return `Key:${o.key}`;
+          return `Key:${o.id}`;
         case 'Translation':
-          return `Translation:${o.key}-${o.language}`;
+          return `Translation:${o.id}`;
         default:
-          return `${o.__typename}:${o.id}`;
+          return `${o.__typename}:${o.code}`;
       }
     },
   });

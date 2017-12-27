@@ -4,8 +4,11 @@ export const languages = gql`
 query {
   languages {
     id
+    code
     name
     parentId
+    createdAt
+    createdBy
   }
 }
 `;
@@ -13,6 +16,7 @@ query {
 export const keys = gql`
   query {
     keys {
+      id
       key
       description
       createdAt
@@ -24,22 +28,25 @@ export const keys = gql`
 export const keyWithTranslations = gql`
   query KeyWithWithTranslations($key: String!) {
     key(key: $key) {
+      id
       key
       description
       createdAt
       createdBy
       translations {
-        language,
-        key,
-        value,
-        createdAt,
-        updatedAt,
-        createdBy,
+        id
+        languageId
+        keyId
+        value
+        createdAt
+        updatedAt
+        createdBy
       }
     }
     
     languages {
       id
+      code
       name
       parentId
     }
@@ -51,6 +58,7 @@ export const keyWithTranslations = gql`
 export const createKey = gql`
   mutation createKey($key: NewKey!) {
     createKey(key: $key) {
+      id
       key
       description
       createdAt
@@ -81,8 +89,9 @@ export const translations = gql`
 export const translate = gql`
   mutation translate($translation: NewTranslation!) {
     translate(translation: $translation) {
-       language,
-       key,
+       id
+       languageId,
+       keyId,
        value,
        createdAt,
        updatedAt,

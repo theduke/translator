@@ -4,19 +4,19 @@ import * as types from 'translator/types';
 
 export interface LanguageProps {
   language: types.Language;
-  delete: (id: string) => void;
+  delete: (lang: types.Language) => void;
   canDelete: boolean;
 }
 
 export const Language = (props: LanguageProps) => {
   const deleteLang = () => {
-    props.delete(props.language.id);
+    props.delete(props.language);
   };
 
   return (
     <li className='list-group-item'>
       <div className='d-inline-block'>
-        {props.language.id}
+        {props.language.code}
       </div>
       <div className='d-inline-block ml-2'>
         {props.language.name}

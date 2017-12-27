@@ -10,14 +10,14 @@ import * as queries from 'translator/queries';
 export interface State {
   loading: boolean;
   error: string | null;
-  id: string;
+  code: string;
   name: string;
   parent: string;
 }
 
 export interface Props {
   create: (data: {
-    id: string,
+    code: string,
     name: string,
     parentId: string | null,
   }) => Promise<any>;
@@ -28,15 +28,15 @@ export class NewLanguage extends React.Component<Props, State> {
   public state = {
     loading: false,
     error: null,
-    id: '',
+    code: '',
     name: '',
     parent: '',
   };
 
   public render() {
-    const {loading, error, id, name, parent} = this.state;
+    const {loading, error, code, name, parent} = this.state;
 
-    const canSubmit = !!id && !!name && !loading;
+    const canSubmit = !!code && !!name && !loading;
 
     return (
       <li className='list-group-item'>
@@ -48,13 +48,13 @@ export class NewLanguage extends React.Component<Props, State> {
           }
 
           <div className='form-group'>
-            <label>Language ID</label>
+            <label>Language Code</label>
             <input
               type='text'
               className='form-control'
-              placeholder='Id...'
-              value={id}
-              onChange={this.onChangeId} />
+              placeholder='Language code...'
+              value={code}
+              onChange={this.onChangeCode} />
           </div>
 
           <div className='form-group'>
@@ -84,9 +84,9 @@ export class NewLanguage extends React.Component<Props, State> {
   }
 
   @bind
-  onChangeId(e: React.ChangeEvent<HTMLInputElement>) {
+  onChangeCode(e: React.ChangeEvent<HTMLInputElement>) {
     this.setState({
-      id: e.target.value.trim(),
+      code: e.target.value.trim(),
     });
   }
 
@@ -106,20 +106,20 @@ export class NewLanguage extends React.Component<Props, State> {
 
   @bind
   private onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    const {id, name, parent} = this.state;
+    const {code, name, parent} = this.state;
 
     e.preventDefault();
 
     this.setState({loading: true, error: null});
 
     this.props.create({
-      id,
+      code,
       name,
       parentId: parent || null,
     }).then(() => {
       this.setState({
         loading: false,
-        id: '',
+        code: '',
         name: '',
         parent: '',
       });
@@ -137,12 +137,14 @@ const createMutation = gql`
 mutation CreateLanguage($lang: NewLanguage!) {
   createLanguage(lang: $lang) {
     id
+    code
     name
     parentId
+    createdAt
+    createdBy
   }
 }
 `;
-
 
 export default graphql(createMutation, {
   props: ({mutate}) => ({
