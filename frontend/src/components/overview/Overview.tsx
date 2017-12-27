@@ -1,6 +1,8 @@
 import {bind} from 'decko';
 import React from 'react';
-import {graphql, compose} from 'react-apollo';
+import {graphql} from 'react-apollo';
+
+import compose from 'lodash/flowRight';
 
 import {Language, Key} from 'translator/types';
 import * as queries from 'translator/queries';
@@ -181,4 +183,4 @@ class Overview extends React.Component<Props, State> {
 export default compose(
   graphql(queries.languages, {name: 'languages'}),
   graphql(queries.keys, {name: 'keys'}),
-)(Overview);
+)(Overview as any);

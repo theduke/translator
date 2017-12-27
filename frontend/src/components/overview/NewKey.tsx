@@ -9,7 +9,7 @@ import {Key} from 'translator/types';
 
 import {KeyTree} from './Overview';
 
-interface Props {
+interface Props extends RouteComponentProps<any> {
   keyTree: KeyTree;
 
   createKey: (key: {key: string, description: string | null}) => Promise<any>;
@@ -153,14 +153,14 @@ class NewKey extends React.Component<RoutedProps, State> {
       clearTimeout(oldHandle);
     }
 
-    const errorTimerHandle = setTimeout(() => {
+    const errorTimerHandle: number = setTimeout(() => {
       this.setState((s) => {
         return {
           ...s,
           errorTimerHandle: null,
         };
       });
-    }, 500);
+    }, 500) as any as number;
 
 
     this.setState({
@@ -229,5 +229,5 @@ export default graphql(queries.createKey, {
 
     },
   }),
-})(Routed);
+})(Routed as any);
 

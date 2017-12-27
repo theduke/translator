@@ -10,7 +10,8 @@
     "lib": [
       "dom",
       "es2017",
-      "dom.iterable"
+      "dom.iterable",
+      "esnext.asynciterable"
     ],
     "module": "es2015",
     "moduleResolution": "node",

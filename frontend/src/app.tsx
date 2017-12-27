@@ -1,5 +1,9 @@
-import ApolloClient, { createNetworkInterface } from 'apollo-client'
 import React from 'react';
+
+import { ApolloClient } from 'apollo-client';
+import { InMemoryCache } from 'apollo-cache-inmemory';
+import { createHttpLink } from 'apollo-link-http';
+import { setContext } from 'apollo-link-context';
 
 import {render} from 'react-dom';
 import App from "./components/App";
@@ -8,23 +12,29 @@ import 'styles/app.scss';
 import {ApiToken} from 'translator/types';
 
 function launch() {
-  const iface = createNetworkInterface({
-      uri: window.location.origin + '/api/graphql',
-  });
-  iface.use([{
-    applyMiddleware(req, next) {
-      if (!req.options.headers) {
-        req.options.headers = {};  // Create the header object if needed.
-      }
+
+  const httpLink = createHttpLink({ uri: '/api/graphql' });
+  const middlewareLink = setContext(() => {
       // get the authentication token from local storage if it exists
       const tokenJson = localStorage.getItem('token');
       const token = tokenJson ? JSON.parse(tokenJson) : null;
-      if (token && token.token) {
-        req.options.headers.authorization = `Bearer ${token.token}`;
+
+      if (token) {
+        return {
+            headers: { authorization: 'Bearer ' + token},
+        };
+      } else {
+        return {};
       }
-      next();
-    },
-  }]);
+  });
+  const link: any = middlewareLink.concat(httpLink);
+
+  const client = new ApolloClient({
+      link,
+      cache: new InMemoryCache(),
+  });
+
+  /*
   const client = new ApolloClient({
     networkInterface: iface,
     dataIdFromObject: (o: any) => {
@@ -35,10 +45,11 @@ function launch() {
         case 'Translation':
           return `Translation:${o.id}`;
         default:
-          return `${o.__typename}:${o.code}`;
+          return `${o.__typename}:${o.id}`;
       }
     },
   });
+  */
 
   const tokenJson = localStorage.getItem('token');
   const token: ApiToken | null = tokenJson ? JSON.parse(tokenJson) : null;

@@ -1,5 +1,8 @@
 import React from 'react';
-import {gql, graphql, compose} from 'react-apollo';
+import {graphql} from 'react-apollo';
+import gql from 'graphql-tag';
+
+import compose from 'lodash/flowRight';
 
 import * as types from 'translator/types';
 import * as queries from 'translator/queries';

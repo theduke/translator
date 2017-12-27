@@ -154,4 +154,4 @@ export default graphql(queries.translate, {
           store.writeQuery({...spec, data});
         }
     }),
-})(Item) as any;
+})(Item as any);

@@ -1,6 +1,7 @@
 import {bind} from 'decko';
 import React from 'react';
-import {gql, graphql} from 'react-apollo';
+import {graphql} from 'react-apollo';
+import gql from 'graphql-tag';
 
 import * as queries from 'translator/queries';
 
@@ -164,4 +165,4 @@ export default graphql(createMutation, {
       });
     },
   }),
-})(NewLanguage);
+})(NewLanguage as any);

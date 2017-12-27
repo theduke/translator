@@ -42,6 +42,9 @@ class App extends React.Component<Props, State> {
     let content;
     let nav;
 
+    // FIXME: remove any hack.
+    const Translate2 = Translate as any;
+
     if (!token) {
       content = <Login onLogin={this.onLogin} />;
     } else {
@@ -52,7 +55,7 @@ class App extends React.Component<Props, State> {
           <Route path='/languages' render={() => <Languages />} />
           <Route
             path='/translate/:key'
-            render={ ({match}: any) => ( <Translate keyName={match.params.key} /> ) } />
+            render={ ({match}: any) => ( <Translate2 keyName={match.params.key} /> ) } />
         </div>
       );
 

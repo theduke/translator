@@ -1,8 +1,10 @@
 import {bind} from 'decko';
 import React from 'react';
-import {graphql, compose} from 'react-apollo';
+import {graphql} from 'react-apollo';
 import {Icon} from 'react-fa';
 import {withRouter, RouteComponentProps} from 'react-router';
+
+import compose from 'lodash/flowRight';
 
 import {Language, Translation} from 'translator/types';
 import * as queries from 'translator/queries';
@@ -71,9 +73,12 @@ class Translate extends React.Component<RoutedProps, State> {
     const languages = keyData.languages;
     const translations = key.translations;
 
+    // FIXME: remove any hack.
+    const Item2 = Item as any;
+
     const items = languages.length ? languages.map(l => {
         return (
-          <Item
+          <Item2
             key={l.id}
             lang={l}
             keyName={this.props.keyName}
@@ -165,7 +170,7 @@ class Translate extends React.Component<RoutedProps, State> {
   }
 }
 
-const Routed = withRouter<Props>(Translate);
+const Routed = withRouter(Translate);
 
 export default compose(
   graphql(queries.keyWithTranslations, {
