@@ -38,6 +38,37 @@ interface State {
   deleteConfirm: boolean;
 }
 
+const DeletePrompt = (props: {delete: () => void, cancel: () => void}) => {
+  return (
+    <div className="alert alert-danger d-flex justify-content-between">
+      <div className='mr-2'>
+          Deleting this key will delete all it's translations and cannot be undone.
+      </div>
+
+      <div className="btn-group">
+
+          <button
+              className='btn btn-md btn-danger'
+              type="button"
+              onClick={props.delete}
+          >
+              <i className='fa fa-trash pr-2' style={{color: 'white'}} />
+              Really Delete Key!
+          </button>
+
+          <button
+              className='btn btn-md btn-default'
+              type="button"
+              onClick={props.cancel}
+          >
+              Cancel
+          </button>
+      </div>
+
+    </div>
+  );
+};
+
 class Translate extends React.Component<RoutedProps, State> {
 
   public state = {
@@ -90,47 +121,33 @@ class Translate extends React.Component<RoutedProps, State> {
         <li className="list-group-item">No languages configured yet.</li>
       );
 
-    const deleteButton = !deleteConfirm || !canDelete ? (
+    const deleteButton = canDelete ? (
       <button
         className='btn btn-md btn-danger'
         onClick={this.onDelete}
-        disabled={!canDelete}
+        disabled={!canDelete || deleteConfirm}
       >
         <i className='fa fa-trash pr-2' style={{color: 'white'}} />
         Delete key
       </button>
-    ) : (
-
-      <div>
-        <div className="alert alert-danger">
-          Deleting this key will delete all translations for it and cannot be
-          undone.
-        </div>
-        <button
-          className='btn btn-md btn-danger'
-          onClick={this.onDelete}
-        >
-          <i className='fa fa-trash pr-2' style={{color: 'white'}} />
-          Really Delete!
-        </button>
-      </div>
-
-    );
+    ) : null;
 
     return (
       <div>
-        <h2 className='text-center mb-3'>{key.key}</h2>
-
+          <h1 className='text-center mb-3'>Key: {key.key}</h1>
         {
           error && <div className='alert alert-danger'>{error}</div>
         }
+
+        <div>
+            {deleteConfirm ? <DeletePrompt delete={this.onDelete} cancel={this.cancelDelete} /> : null}
+        </div>
 
         <div className='row'>
           <div className='col-10'>
 
             <ul className='list-group'>
               {items}
-
             </ul>
 
           </div>
@@ -141,6 +158,11 @@ class Translate extends React.Component<RoutedProps, State> {
       </div>
     );
   };
+
+  @bind
+  private cancelDelete() {
+    this.setState({deleteConfirm: false});
+  }
 
   @bind
   private onDelete() {

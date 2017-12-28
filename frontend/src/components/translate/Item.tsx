@@ -55,14 +55,7 @@ class Item extends React.Component<Props, State> {
     return (
       <li className='list-group-item'>
         <div className='row w-100'>
-          <div className='col-3'>
-            <div>
-              <h4>
-                {lang.code}
-              </h4>
-            </div>
-          </div>
-          <div className='col-7'>
+          <div className='col-10'>
             <textarea
               className='w-100 form-control'
               value={curValue}
@@ -71,20 +64,24 @@ class Item extends React.Component<Props, State> {
             />
 
           </div>
-          <div className='col-2'>
-            {
-              showSaveButton && (
-                <button
-                  className='btn btn-primary btn-lg'
-                  disabled={saveBtnDisabled}
-                  onClick={this.onSave}
-                >
-                  <i className={saveBtnIconCls} style={{color: 'white'}} />
-                </button>
-              )
-            }
-
-          </div>
+            <div className='col-2'>
+                <div className='text-center'>
+                    <h4>
+                        {lang.code}
+                    </h4>
+                    {
+                        showSaveButton && (
+                            <button
+                                className='btn btn-primary btn-lg'
+                                disabled={saveBtnDisabled}
+                                onClick={this.onSave}
+                            >
+                                <i className={saveBtnIconCls} style={{color: 'white'}} />
+                            </button>
+                        )
+                    }
+                </div>
+            </div>
         </div>
 
       </li>
