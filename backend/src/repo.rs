@@ -315,6 +315,13 @@ impl Repo {
         self.db()?.create_key(key)
     }
 
+    pub fn rename_key(&mut self, id: &str, new_key: &str, user: Option<&User>) -> Result<Key> {
+        self.validate_key(new_key)?;
+        let db = self.db()?;
+        db.rename_key(id, new_key)?;
+        db.must_get_key(id)
+    }
+
     pub fn delete_key<S: AsRef<str>>(&mut self, key: S, user: Option<&User>) -> Result<()> {
         self.db()?.delete_key(key.as_ref())?;
         Ok(())

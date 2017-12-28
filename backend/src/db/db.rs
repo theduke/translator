@@ -233,6 +233,20 @@ impl Db {
         Ok(key)
     }
 
+    pub fn must_get_key(&self, id: &str) -> Result<Key> {
+        use self::keys::dsl;
+        let key = dsl::keys.filter(dsl::id.eq(id))
+            .first(self.con())?;
+        Ok(key)
+    }
+
+    pub fn rename_key(&self, id: &str, new_name: &str) -> Result<()> {
+        let key = diesel::update(keys::table.filter(keys::columns::id.eq(id)))
+            .set(keys::columns::key.eq(new_name))
+            .execute(self.con())?;
+        Ok(())
+    }
+
     pub fn create_key(&self, key: Key) -> Result<Key> {
         if key.key == "" {
             return Err("Key may not be empty".into());

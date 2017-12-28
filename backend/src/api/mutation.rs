@@ -36,6 +36,12 @@ graphql_object!(Mutation: Ctx |&self| {
         Ok(key)
     }
 
+    field rename_key(&executor, id: String, new_key: String) -> Res<Key> {
+        let ctx = executor.context();
+        let key = ctx.repo().rename_key(&id, &new_key, ctx.user())?;
+        Ok(key)
+    }
+
     field delete_key(&executor, key: String) -> Res<bool> {
         let ctx = executor.context();
             ctx.repo()
