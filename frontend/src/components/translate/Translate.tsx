@@ -8,6 +8,8 @@ import compose from 'lodash/flowRight';
 
 import {Language, Translation} from 'translator/types';
 import * as queries from 'translator/queries';
+import * as types from 'translator/types';
+import {RenameKey} from './RenameKey';
 
 import Item from './Item';
 
@@ -18,10 +20,7 @@ interface Props {
     loading: boolean;
     error: {} | null;
     languages: Language[];
-    key: {
-      key: string;
-      id: string;
-      description: string;
+    key: types.Key & {
       translations: Translation[];
     }
   };
@@ -34,8 +33,9 @@ type RoutedProps = Props & RouteComponentProps<any>;
 interface State {
   deleteError: string | null;
   deleteLoading: boolean;
-
   deleteConfirm: boolean;
+
+  renameActive: boolean;
 }
 
 const DeletePrompt = (props: {delete: () => void, cancel: () => void}) => {
@@ -75,10 +75,11 @@ class Translate extends React.Component<RoutedProps, State> {
     deleteLoading: false,
     deleteError: null,
     deleteConfirm: false,
+    renameActive: false,
   };
 
   public render() {
-    const {deleteConfirm} = this.state;
+    const {deleteConfirm, renameActive} = this.state;
 
     const keyData = this.props.data;
     let {loading, error} = keyData;
@@ -121,16 +122,6 @@ class Translate extends React.Component<RoutedProps, State> {
         <li className="list-group-item">No languages configured yet.</li>
       );
 
-    const deleteButton = canDelete ? (
-      <button
-        className='btn btn-md btn-danger'
-        onClick={this.onDelete}
-        disabled={!canDelete || deleteConfirm}
-      >
-        <i className='fa fa-trash pr-2' style={{color: 'white'}} />
-        Delete key
-      </button>
-    ) : null;
 
     return (
       <div>
@@ -139,8 +130,9 @@ class Translate extends React.Component<RoutedProps, State> {
           error && <div className='alert alert-danger'>{error}</div>
         }
 
-        <div>
+        <div className='mb-4'>
             {deleteConfirm ? <DeletePrompt delete={this.onDelete} cancel={this.cancelDelete} /> : null}
+            {renameActive ? <RenameKey keyItem={keyData.key} cancel={this.cancelRename} /> : null}
         </div>
 
         <div className='row'>
@@ -152,12 +144,50 @@ class Translate extends React.Component<RoutedProps, State> {
 
           </div>
           <div className='col-2'>
-            {deleteButton}
+              <div className="btn-group-vertical">
+                  <button
+                      className='btn btn-md btn-info'
+                      type='button'
+                      onClick={this.rename}
+                      disabled={renameActive}
+                  >
+                      <i className='fa fa-pencil-square-o pr-2' style={{color: 'white'}} />
+                      Rename
+                  </button>
+
+                  {
+                      canDelete ? (
+                          <button
+                              className='btn btn-md btn-danger'
+                              onClick={this.onDelete}
+                              disabled={!canDelete || deleteConfirm}
+                          >
+                              <i className='fa fa-trash pr-2' style={{color: 'white'}} />
+                              Delete key
+                          </button>
+                      ) : null
+                  }
+              </div>
+
           </div>
         </div>
       </div>
     );
   };
+
+  @bind
+  private rename() {
+    this.setState({
+        renameActive: true,
+    });
+  }
+
+  @bind
+  private cancelRename() {
+    this.setState({
+        renameActive: false,
+    });
+  }
 
   @bind
   private cancelDelete() {

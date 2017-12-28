@@ -67,6 +67,18 @@ export const createKey = gql`
   } 
 `;
 
+export const renameKey = gql`
+    mutation renameKey($id: String!, $newKey: String!) {
+        renameKey(id: $id, newKey: $newKey) {
+            id
+            key
+            description
+            createdAt
+            createdBy
+        }
+    }
+`;
+
 export const deleteKey = gql`
   mutation deleteKey($key: String!) {
     deleteKey(key: $key)
