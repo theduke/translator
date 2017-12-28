@@ -25,3 +25,8 @@ pub struct NewKey {
     pub key: String,
     pub description: Option<String>,
 }
+
+pub fn validate_key(key: &str) -> bool {
+    let re = ::regex::Regex::new("^[a-z]+([a-z\\d_\\-]*[a-z\\d]+)?$").unwrap();
+    key.split('.').all(|part| re.is_match(part))
+}

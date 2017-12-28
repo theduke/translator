@@ -19,6 +19,7 @@ extern crate simple_jwt;
 #[macro_use] extern crate juniper;
 extern crate juniper_rocket;
 extern crate uuid;
+extern crate regex;
 
 mod error;
 mod commands;

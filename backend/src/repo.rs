@@ -36,15 +36,50 @@ impl ExportFormat {
     }
 }
 
-#[derive(Debug)]
+type Tree = Rc<RefCell<BTreeMap<String, MutableKeyTree>>>;
+
+#[derive(Debug, Clone)]
 pub enum MutableKeyTree {
-    Map(Rc<RefCell<BTreeMap<String, MutableKeyTree>>>),
+    Map(Tree),
     Key(String),
 }
 
 impl MutableKeyTree {
     pub fn new_map() -> Self {
         MutableKeyTree::Map(Rc::new(RefCell::new(BTreeMap::new())))
+    }
+
+    pub fn as_key(&self) -> Option<&String> {
+        match self {
+            &MutableKeyTree::Key(ref s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn is_key(&self) -> bool {
+        self.as_key().is_some()
+    }
+
+    pub fn as_map(&self) -> Option<&Tree> {
+        match self {
+            &MutableKeyTree::Map(ref s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn is_map(&self) -> bool {
+        self.as_map().is_some()
+    }
+
+    pub fn get(&self, name: &str) -> Option<MutableKeyTree> {
+        self.as_map()
+            .and_then(|t| {
+                t.borrow().get(name).map(|x| x.clone())
+            })
+    }
+
+    pub fn contains_key(&self, name: &str) -> bool {
+        return self.get(name).is_some()
     }
 
     fn insert_nested(&mut self, key: String, mut parts: Vec<String>) {
@@ -202,6 +237,42 @@ impl Repo {
         self.db()?.language_by_id(id)
     }
 
+    pub fn validate_key(&mut self, key: &str) -> Result<()> {
+        if !key::validate_key(key) {
+            return Err("Invalid key format".into());
+        }
+
+        let mut tree = self.build_key_tree()?;
+        let mut parts: Vec<_> = key.split('.').collect();
+
+        while parts.len() > 0 {
+            let part = parts.remove(0);
+
+            match tree.get(&part) {
+                Some(subtree) => {
+                    if parts.len() == 0 {
+                        if subtree.is_key() {
+                            return Err("Duplicate key".into());
+                        } else {
+                            return Err("Invalid nested key: can't create a key inside an existing hierarchy".into());
+                        }
+                    } else if subtree.is_key() {
+                        return Err("Invalid nested key: can't create a key under an existing key".into());
+                    } else {
+                        tree = subtree;
+                    }
+                },
+                None => {
+                    return Ok(())
+                },
+            }
+
+            let subtree = tree.get(&part);
+        }
+
+        Ok(())
+    }
+
     pub fn create_language(&mut self, lang: NewLanguage, user: Option<&User>) -> Result<Language> {
         let lang = Language {
             id: Uuid::new_v4().to_string(),
@@ -233,6 +304,7 @@ impl Repo {
     }
 
     pub fn create_key(&mut self, key: NewKey, user: Option<&User>) -> Result<Key> {
+        self.validate_key(&key.key)?;
         let key = Key{
             id: Uuid::new_v4().to_string(),
             key: key.key,
