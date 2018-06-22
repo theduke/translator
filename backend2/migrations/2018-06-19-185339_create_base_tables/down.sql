@@ -1,0 +1,8 @@
+
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS tokens;
+DROP TABLE IF EXISTS languages;
+DROP TABLE IF EXISTS keys;
+DROP INDEX IF EXISTS keys_unique;
+DROP TABLE IF EXISTS translations;
+DROP TABLE IF EXISTS translation_requests;

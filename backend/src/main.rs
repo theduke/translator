@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 #![feature(custom_derive)]
+#![recursion_limit="512"]
 
 extern crate dotenv;
 #[macro_use] extern crate error_chain;

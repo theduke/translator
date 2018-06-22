@@ -1,12 +1,13 @@
 use std::time::Duration;
 
-use diesel;
-use diesel::prelude::*;
+use diesel::{
+    prelude::*,
+    sqlite::SqliteConnection,
+    r2d2::{
+        self,
+    },
+};
 use chrono::{Utc};
-
-use r2d2::{self, PooledConnection};
-use diesel::sqlite::SqliteConnection;
-use r2d2_diesel::ConnectionManager;
 
 embed_migrations!("./migrations");
 
@@ -14,13 +15,14 @@ use ::error::*;
 use super::schema::*;
 
 pub type Connection = SqliteConnection;
-pub type PoolConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
-pub type Pool = r2d2::Pool<ConnectionManager<Connection>>;
+pub type PoolConnection = r2d2::PooledConnection<r2d2::ConnectionManager<SqliteConnection>>;
+pub type ConnectionManager = r2d2::ConnectionManager<Connection>;
+pub type Pool = r2d2::Pool<ConnectionManager>;
 
 #[derive(Debug)]
 struct ConnectionCustomizer;
 
-impl r2d2::CustomizeConnection<Connection, ::r2d2_diesel::Error>
+impl r2d2::CustomizeConnection<Connection, r2d2::PoolErr>
      for ConnectionCustomizer {
     fn on_acquire(&self, conn: &mut Connection) -> ::std::result::Result<(), ::r2d2_diesel::Error> {
       use diesel::connection::SimpleConnection;
