@@ -59,6 +59,9 @@ impl Languages {
     }
 
     pub fn create(&self, data: LanguageCreate) -> Result<Language, Error> {
+        if let Some(parent_id) = data.parent_id.as_ref() {
+            self.find(parent_id)?;
+        }
         let create = db::types::LanguageCreate {
             id: uuid().to_string(),
             code: data.code,
@@ -71,6 +74,9 @@ impl Languages {
 
     pub fn update(&self, data: LanguageUpdate) -> Result<Language, Error> {
         let language = self.find(&data.id)?;
+        if let Some(parent_id) = data.parent_id.as_ref() {
+            self.find(parent_id)?;
+        }
         let update = db::types::LanguageUpdate {
             id: data.id.to_string(),
             code: data.code.unwrap_or(language.code),

@@ -4,6 +4,14 @@ use prelude::*;
 use ::db::{UserFilter};
 use super::tokens::{Token, TokenCreate, TokenKind};
 
+#[derive(Fail, Debug)]
+#[fail(display = "user_not_found)")]
+pub struct UserNotFoundError;
+
+#[derive(Fail, Debug)]
+#[fail(display = "invalid_password)")]
+pub struct InvalidPasswordError;
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub enum UserRole {
     Admin,
@@ -180,7 +188,26 @@ impl Users {
         Ok(u.into())
     }
 
-    pub fn login(&self, data: UserLogin) -> Result<(User, Token), Error> {
+    pub fn ensure_admin_user(&self) -> Result<User, Error> {
+        let users = self.filter(&UserFilter{
+            username: Some("admin".into()),
+            email: None,
+        })?;
+        if users.len() > 0 {
+            Ok(users[0].clone())
+        } else {
+
+            let u = UserCreate{
+                role: UserRole::Admin.to_string(),
+                email: "admin@translator.io".into(),
+                username: "admin".into(),
+                password: self.app.config.admin_password.clone(),
+            };
+            self.create(u)
+        }
+    }
+
+    pub fn login(&self, data: UserLogin) -> Result<UserLoginResult, Error> {
         let db = self.app.db()?;
 
         // First, find the user.
@@ -215,6 +242,9 @@ impl Users {
 
         let mut user = user.clone();
         user.password_hash = "".into();
-        Ok((user.clone(), token))
+        Ok(UserLoginResult{
+            user,
+            token,
+        })
     }
 }

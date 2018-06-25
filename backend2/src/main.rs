@@ -16,6 +16,7 @@ extern crate bcrypt;
 extern crate chrono;
 extern crate uuid;
 extern crate dotenv;
+extern crate env_logger;
 
 mod prelude;
 mod app;
@@ -23,6 +24,9 @@ mod db;
 mod server;
 
 fn main() {
+    ::std::env::set_var("RUST_LOG", "actix_web=debug");
+    ::std::env::set_var("RUST_BACKTRACE", "1");
+    env_logger::init();
     let app = app::App::from_env().unwrap();
     server::run_server(app)
 }

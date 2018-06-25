@@ -13,17 +13,25 @@ use db;
 #[derive(Clone, Debug)]
 pub struct Config {
     pub data_path: String,
+    pub admin_password: String,
 }
 
 impl Config {
     pub fn from_env() -> Result<Self, Error> {
         use std::env::var;
+        // Load .env file.
         ::dotenv::dotenv().ok();
-        let data_path = var("T_DATA_PATH")
+
+        let data_path = var("TRANSLATOR_DATA_PATH")
             .map_err(|_| format_err!("Invalid/empty T_DATA_PATH env var"))?;
+
+        let admin_password = var("TRANSLATOR_ADMIN_PASSWORD")
+            .map_err(|_| format_err!("Invalid/empty TRANSLATOR_ADMIN_PASSWORD env var"))?;
+
 
         Ok(Config{
             data_path,
+            admin_password,
         })
     }
 }
@@ -41,11 +49,17 @@ impl App {
         let db_path = path.join("db.sqlite3");
         let db_pool = db::build_pool(db_path.to_str().unwrap())?;
 
-        let app = App {
+        let mut app = App {
             config,
             db_pool,
             user: users::root_user(),
         };
+
+        // Ensure admin user exists.
+        let admin_user = app.users().ensure_admin_user()?;
+
+        app.user = admin_user;
+
         Ok(app)
     }
 
